@@ -22,7 +22,6 @@ async def render(config: dict) -> str:
     label = config.get("label") or "Webcam"
     return (
         f'<div class="slide slide-webcam">'
-        f'<h2>{escape(label)}</h2>'
         f'<img class="webcam-feed" src="{escape(url)}" alt="{escape(label)}">'
         f'</div>'
     )
