@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Signage Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Signage Admin</h1>
+  </header>
+  <main>
+
+    <section>
+      <h2>Rotation settings</h2>
+      <form method="post" action="/admin/settings">
+        <div class="form-row">
+          <label for="rotation_interval_seconds">Rotation interval (seconds)</label>
+          <input
+            type="number"
+            id="rotation_interval_seconds"
+            name="rotation_interval_seconds"
+            min="1"
+            value="{{ rotation_interval }}"
+            required
+          >
+        </div>
+        <button type="submit">Save settings</button>
+      </form>
+    </section>
+
+    <section>
+      <h2>Slides</h2>
+      {% if slides %}
+      <table class="slides">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for slide in slides %}
+          <tr>
+            <td>{{ slide.name }}</td>
+            <td>{{ registry[slide.type].label if slide.type in registry else slide.type }}</td>
+            <td>
+              {% if slide.enabled %}
+              <span class="badge badge-enabled">Enabled</span>
+              {% else %}
+              <span class="badge badge-disabled">Disabled</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="row-actions">
+                <a class="button" href="/admin/slides/{{ slide.id }}/edit">Edit</a>
+
+                <form method="post" action="/admin/slides/{{ slide.id }}/toggle">
+                  <button type="submit" class="secondary">
+                    {{ "Disable" if slide.enabled else "Enable" }}
+                  </button>
+                </form>
+
+                <form method="post" action="/admin/slides/{{ slide.id }}/move">
+                  <input type="hidden" name="direction" value="up">
+                  <button type="submit" class="secondary">Up</button>
+                </form>
+
+                <form method="post" action="/admin/slides/{{ slide.id }}/move">
+                  <input type="hidden" name="direction" value="down">
+                  <button type="submit" class="secondary">Down</button>
+                </form>
+
+                <form method="post" action="/admin/slides/{{ slide.id }}/delete"
+                      onsubmit="return confirm('Delete slide &quot;{{ slide.name }}&quot;?');">
+                  <button type="submit" class="danger">Delete</button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-note">No slides configured yet. Add one below.</p>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>Add slide</h2>
+      <form class="add-slide-form" method="get" action="/admin/slides/new">
+        <div class="form-row">
+          <label for="type">Slide type</label>
+          <select id="type" name="type">
+            {% for key, slide_type in registry.items() %}
+            <option value="{{ key }}">{{ slide_type.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+  </main>
+</body>
+</html>
