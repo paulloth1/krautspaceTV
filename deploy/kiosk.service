@@ -19,4 +19,4 @@ TTYPath=/dev/tty1
 StandardInput=tty
 
 [Install]
-WantedBy=graphical.target
+WantedBy=multi-user.target
