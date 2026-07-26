@@ -206,3 +206,10 @@ a.button:hover {
   color: #6b7280;
   font-size: 0.85rem;
 }
+
+.preview-image {
+  max-width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #111827;
+}

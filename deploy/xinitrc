@@ -1,6 +1,11 @@
 #!/bin/sh
 # Install: cp deploy/xinitrc /home/admin/signage/deploy/xinitrc && chmod +x /home/admin/signage/deploy/xinitrc (invoked by kiosk.service via `startx /home/admin/signage/deploy/xinitrc -- :0 vt1`)
 
+# Copy the session's Xauthority cookie so the backend service (running outside
+# this X session) can take screenshots via scrot for the admin UI preview.
+cp "$XAUTHORITY" /home/admin/.signage-xauth 2>/dev/null
+chmod 600 /home/admin/.signage-xauth 2>/dev/null
+
 # Disable screen blanking / DPMS / screensaver — this is an always-on kiosk display.
 xset s off
 xset -dpms

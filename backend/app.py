@@ -4,11 +4,12 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Form, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from . import db
+from .preview import get_preview_png
 from .rotation import STATE, rotation_loop
 from .slides import REGISTRY
 
@@ -36,6 +37,14 @@ async def display(request: Request):
 @app.get("/api/slide/current")
 async def slide_current():
     return await STATE.snapshot()
+
+
+@app.get("/api/preview.png")
+async def preview_png():
+    data = await get_preview_png()
+    if data is None:
+        return Response(status_code=503, content="preview unavailable")
+    return Response(content=data, media_type="image/png")
 
 
 @app.get("/admin")

@@ -13,6 +13,19 @@
   <main>
 
     <section>
+      <h2>Live preview</h2>
+      <img id="preview" class="preview-image" src="/api/preview.png" alt="HDMI output preview">
+      <script>
+        (function () {
+          var img = document.getElementById("preview");
+          setInterval(function () {
+            img.src = "/api/preview.png?t=" + Date.now();
+          }, 5000);
+        })();
+      </script>
+    </section>
+
+    <section>
       <h2>Rotation settings</h2>
       <form method="post" action="/admin/settings">
         <div class="form-row">
