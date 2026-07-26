@@ -1,0 +1,16 @@
+# Install: sudo cp deploy/backend.service /etc/systemd/system/ && sudo systemctl enable --now backend.service
+[Unit]
+Description=Signage FastAPI backend (uvicorn)
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=admin
+WorkingDirectory=/home/admin/signage
+ExecStart=/home/admin/signage-venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8080
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

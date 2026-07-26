@@ -1,0 +1,28 @@
+#!/bin/sh
+# Install: cp deploy/xinitrc /home/admin/signage/deploy/xinitrc && chmod +x /home/admin/signage/deploy/xinitrc (invoked by kiosk.service via `startx /home/admin/signage/deploy/xinitrc -- :0 vt1`)
+
+# Disable screen blanking / DPMS / screensaver — this is an always-on kiosk display.
+xset s off
+xset -dpms
+xset s noblank
+
+# Hide the mouse cursor; there is no mouse interaction on this kiosk.
+unclutter -idle 0.5 -root &
+
+# Launch Chromium in kiosk mode as the final (PID 1) process of the X session,
+# so stopping the systemd service cleanly tears down the browser.
+exec chromium \
+  --kiosk \
+  --noerrdialogs \
+  --disable-infobars \
+  --disable-session-crashed-bubble \
+  --disable-features=Translate \
+  --disable-translate \
+  --no-first-run \
+  --disable-pinch \
+  --overscroll-history-navigation=0 \
+  --autoplay-policy=no-user-gesture-required \
+  --check-for-update-interval=31536000 \
+  --disk-cache-dir=/dev/null \
+  --incognito \
+  http://127.0.0.1:8080/
