@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ "Edit" if slide else "Add" }} slide &mdash; {{ slide_type.label }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>{{ "Edit" if slide else "Add" }} slide: {{ slide_type.label }}</h1>
+  </header>
+  <main>
+    <section>
+      <form method="post" action="{{ action }}">
+        <input type="hidden" name="_type" value="{{ slide_type.key }}">
+
+        <div class="form-row">
+          <label for="_name">Display name</label>
+          <input
+            type="text"
+            id="_name"
+            name="_name"
+            value="{{ slide.name if slide else slide_type.label }}"
+            required
+          >
+        </div>
+
+        {% for f in slide_type.config_fields %}
+        {% set current = slide.config.get(f.name, f.default) if slide else f.default %}
+        <div class="form-row">
+          <label for="{{ f.name }}">
+            {{ f.label }}{% if f.required %} <span class="required">*</span>{% endif %}
+          </label>
+
+          {% if f.type == "textarea" %}
+          <textarea
+            id="{{ f.name }}"
+            name="{{ f.name }}"
+            {% if f.required %}required{% endif %}
+          >{{ current }}</textarea>
+
+          {% elif f.type == "select" %}
+          <select id="{{ f.name }}" name="{{ f.name }}" {% if f.required %}required{% endif %}>
+            {% for opt in f.options %}
+            <option value="{{ opt }}" {% if opt == current %}selected{% endif %}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+
+          {% elif f.type == "number" %}
+          <input
+            type="number"
+            id="{{ f.name }}"
+            name="{{ f.name }}"
+            value="{{ current }}"
+            {% if f.required %}required{% endif %}
+          >
+
+          {% elif f.type == "password" %}
+          <input
+            type="password"
+            id="{{ f.name }}"
+            name="{{ f.name }}"
+            value="{{ current }}"
+            {% if f.required %}required{% endif %}
+          >
+
+          {% else %}
+          <input
+            type="text"
+            id="{{ f.name }}"
+            name="{{ f.name }}"
+            value="{{ current }}"
+            {% if f.required %}required{% endif %}
+          >
+          {% endif %}
+        </div>
+        {% endfor %}
+
+        <button type="submit">{{ "Save changes" if slide else "Add slide" }}</button>
+      </form>
+      <a class="back-link" href="/admin">&larr; Back to admin</a>
+    </section>
+  </main>
+</body>
+</html>

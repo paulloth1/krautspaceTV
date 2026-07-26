@@ -1,0 +1,179 @@
+/* Digital signage kiosk display styles.
+   Designed for full-viewport TV display, viewed from a distance.
+   Kept deliberately simple/light for weak hardware (Raspberry Pi 2). */
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  font-family: "DejaVu Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
+}
+
+#slide {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+/* Generic slide wrapper */
+.slide {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3vh 4vw;
+}
+
+.slide h2 {
+  font-size: 4vw;
+  font-weight: 700;
+  margin: 0 0 2vh 0;
+  text-align: center;
+  text-shadow: 0 0.2vh 0.4vh rgba(0, 0, 0, 0.8);
+}
+
+.slide p {
+  font-size: 2.5vw;
+  text-align: center;
+}
+
+/* Empty state */
+.slide-empty h2 {
+  font-size: 5vw;
+  color: #888;
+}
+
+.slide-empty p {
+  font-size: 2.5vw;
+  color: #666;
+}
+
+/* Webcam */
+.slide-webcam {
+  padding: 2vh 2vw;
+}
+
+.slide-webcam h2 {
+  font-size: 3.5vw;
+}
+
+.webcam-feed {
+  max-width: 100%;
+  max-height: 82vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: 0.5vw;
+}
+
+/* Matrix chat */
+.slide-matrix {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.slide-matrix h2 {
+  text-align: left;
+}
+
+.matrix-messages {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.matrix-messages li {
+  font-size: 2.6vw;
+  line-height: 1.5;
+  padding: 0.8vh 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.matrix-messages li:last-child {
+  border-bottom: none;
+}
+
+.matrix-messages .sender {
+  font-weight: 700;
+  color: #7fd4ff;
+  margin-right: 0.5em;
+}
+
+/* Train departures */
+.slide-train {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.slide-train h2 {
+  text-align: left;
+}
+
+table.departures {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 3vw;
+}
+
+table.departures tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+table.departures tr:last-child {
+  border-bottom: none;
+}
+
+table.departures td {
+  padding: 1.5vh 1vw;
+}
+
+table.departures td.line {
+  font-weight: 700;
+  color: #ffd27f;
+  width: 15%;
+}
+
+table.departures td.time {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  width: 20%;
+}
+
+/* Media slides (image / video / iframe url) */
+.slide-media {
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.slide-media img,
+.slide-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.slide-media iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Signage</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/display.css">
+</head>
+<body>
+  <div id="slide"><div class="slide slide-empty"><h2>Loading&hellip;</h2></div></div>
+
+  <script>
+    (function () {
+      var POLL_MS = 5000;
+      var slideEl = document.getElementById("slide");
+      var lastId; // undefined = never set yet, so first fetch always renders
+
+      function applySlide(data) {
+        if (data.id === lastId) {
+          return; // same slide already showing, don't touch the DOM (avoids img/video reload flicker)
+        }
+        lastId = data.id;
+        slideEl.innerHTML = data.html;
+      }
+
+      function poll() {
+        fetch("/api/slide/current", { cache: "no-store" })
+          .then(function (resp) {
+            if (!resp.ok) throw new Error("bad response");
+            return resp.json();
+          })
+          .then(applySlide)
+          .catch(function () {
+            // Network hiccup or backend restart: keep showing whatever is on
+            // screen and just try again on the next tick.
+          });
+      }
+
+      poll();
+      setInterval(poll, POLL_MS);
+    })();
+  </script>
+</body>
+</html>
