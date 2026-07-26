@@ -11,8 +11,8 @@ async def is_available(config: dict) -> bool:
         return False
     try:
         async with httpx.AsyncClient(timeout=2.0) as client:
-            resp = await client.get(url, headers={"Range": "bytes=0-0"})
-            return resp.status_code < 400
+            async with client.stream("GET", url) as resp:
+                return resp.status_code < 400
     except httpx.HTTPError:
         return False
 
