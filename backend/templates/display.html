@@ -8,6 +8,12 @@
 </head>
 <body>
   <div id="slide"><div class="slide slide-empty"><h2>Loading&hellip;</h2></div></div>
+  <div id="debugoverlay" style="position:fixed;bottom:0;right:0;background:magenta;color:black;font-size:2vw;padding:0.3em;z-index:9999"></div>
+
+  <script>
+    document.getElementById("debugoverlay").textContent =
+      "OUTER W=" + window.innerWidth + " H=" + window.innerHeight;
+  </script>
 
   <script>
     (function () {
