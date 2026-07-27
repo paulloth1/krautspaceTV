@@ -12,7 +12,7 @@
   <script>
     (function () {
       var POLL_MS = 5000;
-      var IFRAME_RESET_MS = 8000; // reset scroll position on cross-origin iframes we can't control directly
+      var IFRAME_RESET_MS = 30000; // reset scroll position on cross-origin iframes we can't control directly
       var slideEl = document.getElementById("slide");
       var lastId; // undefined = never set yet, so first fetch always renders
       var iframeResetTimer = null;

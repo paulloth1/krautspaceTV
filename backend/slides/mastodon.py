@@ -23,12 +23,17 @@ def _strip_html(content: str) -> str:
     return " ".join(text.split())
 
 
+def _headers(config: dict) -> dict:
+    token = config.get("access_token", "")
+    return {"Authorization": f"Bearer {token}"} if token else {}
+
+
 async def is_available(config: dict) -> bool:
     if not config.get("instance") or not config.get("hashtag"):
         return False
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(_timeline_url(config, 1))
+            resp = await client.get(_timeline_url(config, 1), headers=_headers(config))
             return resp.status_code == 200
     except httpx.HTTPError:
         return False
@@ -39,7 +44,7 @@ async def render(config: dict) -> str:
     title = config.get("title") or f"#{hashtag}"
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(_timeline_url(config, 10))
+            resp = await client.get(_timeline_url(config, 10), headers=_headers(config))
             resp.raise_for_status()
             statuses = resp.json()
     except (httpx.HTTPError, ValueError):
@@ -65,6 +70,12 @@ register(
         config_fields=[
             ConfigField(name="instance", label="Instance domain (e.g. mastodon.social)"),
             ConfigField(name="hashtag", label="Hashtag (without #)"),
+            ConfigField(
+                name="access_token",
+                label="Access token (only needed if the instance requires auth for public timelines)",
+                type="password",
+                required=False,
+            ),
             ConfigField(name="title", label="Display title", required=False),
         ],
         is_available=is_available,
