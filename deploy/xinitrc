@@ -18,6 +18,8 @@ unclutter -idle 0.5 -root &
 # so stopping the systemd service cleanly tears down the browser.
 exec chromium \
   --kiosk \
+  --window-position=0,0 \
+  --window-size=1920,1080 \
   --force-device-scale-factor=1 \
   --disable-gpu \
   --disable-gpu-compositing \
