@@ -16,8 +16,8 @@
     (function () {
       var POLL_MS = 5000;
       var IFRAME_RESET_MS = 30000; // reset scroll position on cross-origin iframes we can't control directly
-      var READY_TIMEOUT_MS = 12000; // don't wait forever for a slow/broken resource before showing it anyway
-      var IFRAME_SETTLE_MS = 6000; // iframe "load" fires on initial shell load, before JS apps inside finish fetching their own data
+      var READY_TIMEOUT_MS = 15000; // don't wait forever for a slow/broken resource before showing it anyway
+      var IFRAME_SETTLE_MS = 10000; // iframe "load" fires on initial shell load, before JS apps inside finish fetching their own data
       var FADE_MS = 5000; // must match the opacity transition duration in display.css
 
       var active = document.getElementById("slide-a");
