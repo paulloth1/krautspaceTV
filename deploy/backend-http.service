@@ -1,0 +1,17 @@
+# Install: sudo cp deploy/backend-http.service /etc/systemd/system/ && sudo systemctl enable --now backend-http.service
+[Unit]
+Description=Signage FastAPI backend (uvicorn, plain HTTP on port 80 for LAN access)
+Wants=network-online.target
+After=network-online.target backend.service
+
+[Service]
+Type=simple
+User=admin
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+WorkingDirectory=/home/admin/signage
+ExecStart=/home/admin/signage-venv/bin/uvicorn backend.app:app --host 0.0.0.0 --port 80
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
