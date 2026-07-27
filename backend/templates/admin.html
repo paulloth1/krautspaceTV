@@ -71,6 +71,10 @@
               <div class="row-actions">
                 <a class="button" href="/admin/slides/{{ slide.id }}/edit">Edit</a>
 
+                <form method="post" action="/admin/slides/{{ slide.id }}/view-now">
+                  <button type="submit" class="secondary">View now</button>
+                </form>
+
                 <form method="post" action="/admin/slides/{{ slide.id }}/toggle">
                   <button type="submit" class="secondary">
                     {{ "Disable" if slide.enabled else "Enable" }}

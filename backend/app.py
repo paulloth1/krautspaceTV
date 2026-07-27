@@ -125,6 +125,12 @@ async def toggle_slide(slide_id: int):
     return RedirectResponse("/admin", status_code=303)
 
 
+@app.post("/admin/slides/{slide_id}/view-now")
+async def view_now(slide_id: int):
+    await STATE.request_forced(slide_id)
+    return RedirectResponse("/admin", status_code=303)
+
+
 @app.post("/admin/slides/{slide_id}/move")
 async def move_slide(slide_id: int, direction: str = Form(...)):
     await db.move_slide(slide_id, direction)
