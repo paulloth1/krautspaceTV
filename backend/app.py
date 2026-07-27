@@ -39,6 +39,22 @@ async def slide_current():
     return await STATE.snapshot()
 
 
+@app.get("/debug/viewport")
+async def debug_viewport():
+    html = (
+        "<body style='margin:0;background:lime'>"
+        "<div style='font-size:6vw;font-family:sans-serif'>"
+        "W=<span id='w'></span> H=<span id='h'></span> DPR=<span id='d'></span>"
+        "</div>"
+        "<script>"
+        "document.getElementById('w').textContent=window.innerWidth;"
+        "document.getElementById('h').textContent=window.innerHeight;"
+        "document.getElementById('d').textContent=window.devicePixelRatio;"
+        "</script></body>"
+    )
+    return Response(content=html, media_type="text/html")
+
+
 @app.get("/api/preview.png")
 async def preview_png():
     data = await get_preview_png()
