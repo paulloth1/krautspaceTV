@@ -12,8 +12,10 @@
   <script>
     (function () {
       var POLL_MS = 5000;
+      var IFRAME_RESET_MS = 8000; // reset scroll position on cross-origin iframes we can't control directly
       var slideEl = document.getElementById("slide");
       var lastId; // undefined = never set yet, so first fetch always renders
+      var iframeResetTimer = null;
 
       function applySlide(data) {
         if (data.id === lastId) {
@@ -21,6 +23,21 @@
         }
         lastId = data.id;
         slideEl.innerHTML = data.html;
+
+        if (iframeResetTimer) {
+          clearInterval(iframeResetTimer);
+          iframeResetTimer = null;
+        }
+        var iframe = slideEl.querySelector("iframe");
+        if (iframe) {
+          // Some embedded pages auto-scroll themselves over time; we can't reach
+          // into a cross-origin iframe's JS to reset that, so periodically reload
+          // it instead, which puts it back at the top.
+          var src = iframe.src;
+          iframeResetTimer = setInterval(function () {
+            iframe.src = src;
+          }, IFRAME_RESET_MS);
+        }
       }
 
       function poll() {

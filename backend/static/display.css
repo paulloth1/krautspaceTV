@@ -116,6 +116,45 @@ html, body {
   margin-right: 0.5em;
 }
 
+/* Mastodon hashtag */
+.slide-mastodon {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.slide-mastodon h2 {
+  text-align: left;
+}
+
+.mastodon-posts {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.mastodon-posts li {
+  font-size: 2.6vw;
+  line-height: 1.5;
+  padding: 0.8vh 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.mastodon-posts li:last-child {
+  border-bottom: none;
+}
+
+.mastodon-posts .sender {
+  font-weight: 700;
+  color: #b48bf2;
+  margin-right: 0.5em;
+}
+
 /* Train departures */
 .slide-train {
   align-items: stretch;
