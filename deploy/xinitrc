@@ -21,8 +21,6 @@ exec chromium \
   --window-position=0,0 \
   --window-size=1920,1080 \
   --force-device-scale-factor=1 \
-  --disable-gpu \
-  --disable-gpu-compositing \
   --noerrdialogs \
   --disable-infobars \
   --disable-session-crashed-bubble \
