@@ -6,10 +6,6 @@
 cp "$XAUTHORITY" /home/admin/.signage-xauth 2>/dev/null
 chmod 600 /home/admin/.signage-xauth 2>/dev/null
 
-# Explicitly select 1920x1080 — without a real display's EDID, Xorg otherwise
-# defaults to a low fallback resolution even though 1920x1080 is a supported mode.
-xrandr --output HDMI-1 --mode 1920x1080 2>/dev/null
-
 # Disable screen blanking / DPMS / screensaver — this is an always-on kiosk display.
 xset s off
 xset -dpms
