@@ -22,6 +22,8 @@ unclutter -idle 0.5 -root &
 # so stopping the systemd service cleanly tears down the browser.
 exec chromium \
   --kiosk \
+  --disable-gpu \
+  --disable-gpu-compositing \
   --noerrdialogs \
   --disable-infobars \
   --disable-session-crashed-bubble \
