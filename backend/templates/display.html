@@ -23,24 +23,9 @@
       var active = document.getElementById("slide-a");
       var standby = document.getElementById("slide-b");
       var lastId; // undefined = never set yet, so first fetch always renders
+      var lastHtml = null;
       var resetTimer = null;
-
-      function armIframeReset(container) {
-        if (resetTimer) {
-          clearInterval(resetTimer);
-          resetTimer = null;
-        }
-        var iframe = container.querySelector("iframe");
-        if (iframe) {
-          // Some embedded pages auto-scroll themselves over time; we can't reach
-          // into a cross-origin iframe's JS to reset that, so periodically reload
-          // it instead, which puts it back at the top.
-          var src = iframe.src;
-          resetTimer = setInterval(function () {
-            iframe.src = src;
-          }, IFRAME_RESET_MS);
-        }
-      }
+      var pendingGen = 0;
 
       function swapToStandby() {
         standby.classList.add("visible");
@@ -48,7 +33,7 @@
         var justHidden = active;
         active = standby;
         standby = justHidden;
-        armIframeReset(active);
+        armIframeReset();
         // Give the fade time to finish, then clear the hidden buffer to free
         // up any iframe/video resources it was holding.
         setTimeout(function () {
@@ -56,13 +41,9 @@
         }, FADE_MS + 100);
       }
 
-      function applySlide(data) {
-        if (data.id === lastId) {
-          return; // same slide already showing, don't touch the DOM (avoids img/video reload flicker)
-        }
-        lastId = data.id;
-
-        standby.innerHTML = data.html;
+      function showHtml(htmlStr) {
+        var gen = ++pendingGen;
+        standby.innerHTML = htmlStr;
         var media = standby.querySelector("iframe, img");
         if (!media) {
           swapToStandby();
@@ -71,7 +52,9 @@
 
         var done = false;
         function onReady() {
-          if (done) return;
+          if (done || gen !== pendingGen) {
+            return; // superseded by a newer slide/reset before this one finished loading
+          }
           done = true;
           swapToStandby();
         }
@@ -88,6 +71,30 @@
         media.addEventListener("load", onLoad, { once: true });
         media.addEventListener("error", onReady, { once: true });
         setTimeout(onReady, READY_TIMEOUT_MS);
+      }
+
+      function armIframeReset() {
+        if (resetTimer) {
+          clearInterval(resetTimer);
+          resetTimer = null;
+        }
+        if (active.querySelector("iframe")) {
+          resetTimer = setInterval(function () {
+            // Reload through the same hidden-load-then-fade path used for
+            // rotation, rather than mutating the visible iframe in place
+            // (which would flash its loading state with no transition).
+            showHtml(lastHtml);
+          }, IFRAME_RESET_MS);
+        }
+      }
+
+      function applySlide(data) {
+        if (data.id === lastId) {
+          return; // same slide already showing, don't touch the DOM (avoids img/video reload flicker)
+        }
+        lastId = data.id;
+        lastHtml = data.html;
+        showHtml(data.html);
       }
 
       function poll() {
