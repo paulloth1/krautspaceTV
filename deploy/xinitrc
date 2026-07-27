@@ -6,6 +6,10 @@
 cp "$XAUTHORITY" /home/admin/.signage-xauth 2>/dev/null
 chmod 600 /home/admin/.signage-xauth 2>/dev/null
 
+# EXPERIMENTAL: force interlaced mode — some Samsung TVs only work correctly
+# with vc4-kms-v3d in 1920x1080i, not progressive, per community reports.
+xrandr --output HDMI-1 --mode 1920x1080i --rate 60 2>/dev/null
+
 # Disable screen blanking / DPMS / screensaver — this is an always-on kiosk display.
 xset s off
 xset -dpms
