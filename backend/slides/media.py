@@ -29,9 +29,9 @@ async def render(config: dict) -> str:
                 f"width:{inv}%;height:{inv}%;border:none;"
                 f"transform:scale({scale});transform-origin:top left;"
             )
-            body = f'<iframe src="{escape(src)}" style="{style}"></iframe>'
+            body = f'<iframe src="{escape(src)}" scrolling="no" style="{style}"></iframe>'
         else:
-            body = f'<iframe src="{escape(src)}"></iframe>'
+            body = f'<iframe src="{escape(src)}" scrolling="no"></iframe>'
     else:
         body = f'<img src="{escape(src)}" alt="media">'
     return f'<div class="slide slide-media slide-media-{escape(kind)}">{body}</div>'
