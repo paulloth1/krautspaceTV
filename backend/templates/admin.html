@@ -58,52 +58,6 @@
     </section>
 
     <section>
-      <h2>System status</h2>
-      <dl id="system-status" class="stat-grid"><dt>Loading&hellip;</dt><dd></dd></dl>
-      <script>
-        (function () {
-          var el = document.getElementById("system-status");
-
-          function formatUptime(seconds) {
-            var d = Math.floor(seconds / 86400);
-            var h = Math.floor((seconds % 86400) / 3600);
-            var m = Math.floor((seconds % 3600) / 60);
-            return d + "d " + h + "h " + m + "m";
-          }
-
-          function refresh() {
-            fetch("/api/system/status", { cache: "no-store" })
-              .then(function (resp) { return resp.json(); })
-              .then(function (data) {
-                var t = data.throttled || {};
-                var warnings = [];
-                if (t.undervoltage_now) warnings.push("undervoltage NOW");
-                if (t.throttled_now) warnings.push("throttled NOW");
-                if (t.undervoltage_since_boot) warnings.push("undervoltage since boot");
-                if (t.throttled_since_boot) warnings.push("throttled since boot");
-                var rows = [
-                  ["IP address(es)", data.ip_addresses.join(", ") || "unknown"],
-                  ["Hostname", data.hostname],
-                  ["CPU temp", data.cpu_temp_c != null ? data.cpu_temp_c.toFixed(1) + " °C" : "n/a"],
-                  ["Load average", data.load_avg["1m"].toFixed(2) + " / " + data.load_avg["5m"].toFixed(2) + " / " + data.load_avg["15m"].toFixed(2)],
-                  ["Memory", data.memory.used_mb + " / " + data.memory.total_mb + " MB (" + data.memory.percent + "%)"],
-                  ["Uptime", formatUptime(data.uptime_seconds)],
-                  ["Power", warnings.length ? warnings.join(", ") : "OK"],
-                ];
-                el.innerHTML = rows.map(function (r) {
-                  return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>";
-                }).join("");
-              })
-              .catch(function () {});
-          }
-
-          refresh();
-          setInterval(refresh, 10000);
-        })();
-      </script>
-    </section>
-
-    <section>
       <h2>Rotation settings</h2>
       <form method="post" action="/admin/settings">
         <div class="form-row">
@@ -199,6 +153,52 @@
         </div>
         <button type="submit">Add</button>
       </form>
+    </section>
+
+    <section>
+      <h2>System status</h2>
+      <dl id="system-status" class="stat-grid"><dt>Loading&hellip;</dt><dd></dd></dl>
+      <script>
+        (function () {
+          var el = document.getElementById("system-status");
+
+          function formatUptime(seconds) {
+            var d = Math.floor(seconds / 86400);
+            var h = Math.floor((seconds % 86400) / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            return d + "d " + h + "h " + m + "m";
+          }
+
+          function refresh() {
+            fetch("/api/system/status", { cache: "no-store" })
+              .then(function (resp) { return resp.json(); })
+              .then(function (data) {
+                var t = data.throttled || {};
+                var warnings = [];
+                if (t.undervoltage_now) warnings.push("undervoltage NOW");
+                if (t.throttled_now) warnings.push("throttled NOW");
+                if (t.undervoltage_since_boot) warnings.push("undervoltage since boot");
+                if (t.throttled_since_boot) warnings.push("throttled since boot");
+                var rows = [
+                  ["IP address(es)", data.ip_addresses.join(", ") || "unknown"],
+                  ["Hostname", data.hostname],
+                  ["CPU temp", data.cpu_temp_c != null ? data.cpu_temp_c.toFixed(1) + " °C" : "n/a"],
+                  ["Load average", data.load_avg["1m"].toFixed(2) + " / " + data.load_avg["5m"].toFixed(2) + " / " + data.load_avg["15m"].toFixed(2)],
+                  ["Memory", data.memory.used_mb + " / " + data.memory.total_mb + " MB (" + data.memory.percent + "%)"],
+                  ["Uptime", formatUptime(data.uptime_seconds)],
+                  ["Power", warnings.length ? warnings.join(", ") : "OK"],
+                ];
+                el.innerHTML = rows.map(function (r) {
+                  return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>";
+                }).join("");
+              })
+              .catch(function () {});
+          }
+
+          refresh();
+          setInterval(refresh, 10000);
+        })();
+      </script>
     </section>
 
   </main>
