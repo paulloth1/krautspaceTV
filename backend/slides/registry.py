@@ -18,7 +18,7 @@ class SlideType:
     label: str
     config_fields: list[ConfigField]
     is_available: Callable[[dict], Awaitable[bool]]
-    render: Callable[[dict], Awaitable[str]]
+    render: Callable[[dict, int | None], Awaitable[str]]
 
 
 REGISTRY: dict[str, SlideType] = {}

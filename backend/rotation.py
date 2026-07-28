@@ -77,7 +77,7 @@ async def _render_forced(slide_id: int) -> bool:
     if slide_type is None:
         return False
     try:
-        html = await slide_type.render(slide["config"])
+        html = await slide_type.render(slide["config"], slide["id"])
     except Exception:
         html = ERROR_HTML
     interval = int(await db.get_setting("rotation_interval_seconds", "60"))
@@ -115,7 +115,7 @@ async def rotation_loop() -> None:
             if not available:
                 continue
             try:
-                html = await slide_type.render(slide["config"])
+                html = await slide_type.render(slide["config"], slide["id"])
             except Exception:
                 continue
 

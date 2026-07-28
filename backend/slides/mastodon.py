@@ -33,7 +33,7 @@ async def is_available(config: dict) -> bool:
     return await url_ok(_timeline_url(config, 1), headers=_headers(config))
 
 
-async def render(config: dict) -> str:
+async def render(config: dict, slide_id: int | None = None) -> str:
     hashtag = config.get("hashtag", "").strip().lstrip("#")
     title = config.get("title") or f"#{hashtag}"
     statuses = await fetch_json(_timeline_url(config, 10), headers=_headers(config))

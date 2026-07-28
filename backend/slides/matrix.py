@@ -23,7 +23,7 @@ async def is_available(config: dict) -> bool:
     return await url_ok(_messages_url(config, 1), headers=_headers(config))
 
 
-async def render(config: dict) -> str:
+async def render(config: dict, slide_id: int | None = None) -> str:
     room_name = config.get("room_name") or "Matrix chat"
     data = await fetch_json(_messages_url(config, 15), headers=_headers(config))
     if data is None:
