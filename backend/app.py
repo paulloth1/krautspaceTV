@@ -32,6 +32,10 @@ SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*src=[\"']([^\"']+)[\"'][^>]*>.*?</scr
 # <link id="theme"> tag, defaulting to "light" before its own JS swaps it based
 # on localStorage/system preference. Force it straight to dark for the kiosk.
 THEME_LINK_RE = re.compile(r'<link\b[^>]*\bid=["\']theme["\'][^>]*>', re.IGNORECASE)
+# ...its inline <script> re-checks matchMedia('prefers-color-scheme') on every
+# load and overwrites that link again, racing our substitution above. Strip any
+# inline (no-src) script mentioning it so our forced dark link always wins.
+INLINE_SCRIPT_RE = re.compile(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.IGNORECASE | re.DOTALL)
 
 # The kiosk display has no one to click "accept"/"reject" on a cookie banner, so
 # just hide the common ones outright rather than leaving them stuck on screen.
@@ -100,6 +104,9 @@ async def proxy(url: str, cookies: str = ""):
 
     body = SCRIPT_TAG_RE.sub(_strip_heavy_script, body)
     body = THEME_LINK_RE.sub(lambda m: m.group(0).replace("light.min.css", "dark.min.css"), body)
+    body = INLINE_SCRIPT_RE.sub(
+        lambda m: "" if "prefers-color-scheme" in m.group(1) else m.group(0), body
+    )
 
     new_body, count = re.subn(
         r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag + COOKIE_BANNER_CSS, body, count=1
