@@ -5,7 +5,45 @@ hackerspace, rotating between the 3D printer webcam, Matrix/Mastodon feeds,
 train departure boards, weather, and other web content, with a web-based
 admin UI for managing slides.
 
-## Architecture
+## Using it
+
+- Admin UI: `http://krautspaceTV/admin` (or `https://` on port 443/8080
+  — self-signed cert, browser will warn once).
+- Add slides via "Add slide", pick a type, fill in its fields, save.
+- "View now" force-pushes a slide to the display immediately, without
+  waiting for rotation.
+- Rotation interval is configurable in "Rotation settings" — keep it above
+  roughly 20–25s, since the display's own load/fade buffering takes that
+  long for iframe-heavy slides.
+
+### Notes on the `media` (URL) slide type
+
+- `scale` zooms a small embedded widget to fill more of the screen.
+- `bypass_csp: yes` routes the iframe through `/proxy`, which:
+  - strips `X-Frame-Options`/`CSP` so sites that block framing can still be
+    embedded,
+  - strips known heavy ad/consent-management scripts (`opencmp.net`,
+    `cdntrf.com`) that can peg the Pi 2's CPU hard enough to freeze the
+    entire kiosk browser,
+  - hides common cookie-consent banners via injected CSS (the kiosk has no
+    one to click "accept"),
+  - forces `dbf.finalrewind.org` departure boards to dark theme.
+- `cookies` (only used with `bypass_csp`) lets you paste a raw
+  `name=value; name2=value2` header captured from a real browser after
+  accepting/rejecting a site's cookie banner once, so the site sees existing
+  consent on every load.
+
+## Known limitations
+
+- Pi 2's weak CPU + 900MB RAM means any sufficiently JS-heavy embedded page
+  (ad tech, chat widgets) risks freezing the whole kiosk tab; the `/proxy`
+  stripping above mitigates known offenders, but new ones may need the same
+  treatment.
+- No active CEC control (power on/off, input switching) under `vc4-fkms-v3d`
+  — only the passive wake-on-HDMI-init behavior works.
+
+<details>
+<summary><h2>Architecture</h2></summary>
 
 - **Backend**: FastAPI + Uvicorn (`backend/app.py`), serving:
   - `/` — the kiosk display page (`templates/display.html`), polled by the
@@ -50,7 +88,10 @@ TLS:
   sends a passive CEC wake broadcast on HDMI init, so the TV auto-wakes when
   the Pi boots.
 
-## Setup
+</details>
+
+<details>
+<summary><h2>Setup</h2></summary>
 
 ### 1. OS and dependencies
 
@@ -90,39 +131,4 @@ launches Chromium in kiosk mode pointed at the internal backend
 (`http://127.0.0.1:8081/`). It waits for the backend to respond before
 starting X (see `ExecStartPre` in `deploy/kiosk.service`).
 
-### 4. Using it
-
-- Admin UI: `http://krautspaceTV/admin` (or `https://` on port 443/8080
-  — self-signed cert, browser will warn once).
-- Add slides via "Add slide", pick a type, fill in its fields, save.
-- "View now" force-pushes a slide to the display immediately, without
-  waiting for rotation.
-- Rotation interval is configurable in "Rotation settings" — keep it above
-  roughly 20–25s, since the display's own load/fade buffering takes that
-  long for iframe-heavy slides.
-
-### Notes on the `media` (URL) slide type
-
-- `scale` zooms a small embedded widget to fill more of the screen.
-- `bypass_csp: yes` routes the iframe through `/proxy`, which:
-  - strips `X-Frame-Options`/`CSP` so sites that block framing can still be
-    embedded,
-  - strips known heavy ad/consent-management scripts (`opencmp.net`,
-    `cdntrf.com`) that can peg the Pi 2's CPU hard enough to freeze the
-    entire kiosk browser,
-  - hides common cookie-consent banners via injected CSS (the kiosk has no
-    one to click "accept"),
-  - forces `dbf.finalrewind.org` departure boards to dark theme.
-- `cookies` (only used with `bypass_csp`) lets you paste a raw
-  `name=value; name2=value2` header captured from a real browser after
-  accepting/rejecting a site's cookie banner once, so the site sees existing
-  consent on every load.
-
-## Known limitations
-
-- Pi 2's weak CPU + 900MB RAM means any sufficiently JS-heavy embedded page
-  (ad tech, chat widgets) risks freezing the whole kiosk tab; the `/proxy`
-  stripping above mitigates known offenders, but new ones may need the same
-  treatment.
-- No active CEC control (power on/off, input switching) under `vc4-fkms-v3d`
-  — only the passive wake-on-HDMI-init behavior works.
+</details>
