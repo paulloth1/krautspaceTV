@@ -19,6 +19,15 @@ from .slides import REGISTRY
 
 BASE_DIR = Path(__file__).parent
 
+# Third-party ad/consent (IAB TCF) vendor scripts known to hang the Pi's weak
+# CPU by synchronously processing hundreds of vendor entries on page load.
+# Strip <script> tags loading from these hosts before handing pages to Chromium.
+HEAVY_SCRIPT_HOSTS = [
+    "opencmp.net",
+    "cdntrf.com",
+]
+SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*src=[\"']([^\"']+)[\"'][^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -68,6 +77,13 @@ async def proxy(url: str, cookies: str = ""):
     base_tag = f'<base href="{escape(base_url)}">'
 
     body = resp.text
+
+    def _strip_heavy_script(m: re.Match) -> str:
+        src = m.group(1)
+        return "" if any(host in src for host in HEAVY_SCRIPT_HOSTS) else m.group(0)
+
+    body = SCRIPT_TAG_RE.sub(_strip_heavy_script, body)
+
     new_body, count = re.subn(r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag, body, count=1)
     body = new_body if count else base_tag + body
 
