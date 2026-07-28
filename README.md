@@ -92,7 +92,7 @@ starting X (see `ExecStartPre` in `deploy/kiosk.service`).
 
 ### 4. Using it
 
-- Admin UI: `http://krautspaceTV.local/admin` (or `https://` on port 443/8080
+- Admin UI: `http://krautspaceTV/admin` (or `https://` on port 443/8080
   — self-signed cert, browser will warn once).
 - Add slides via "Add slide", pick a type, fill in its fields, save.
 - "View now" force-pushes a slide to the display immediately, without
