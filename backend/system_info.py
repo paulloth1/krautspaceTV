@@ -44,7 +44,7 @@ def get_ip_addresses() -> list[str]:
         s.close()
     except OSError:
         pass
-    ips.discard("127.0.0.1")
+    ips = {ip for ip in ips if not ip.startswith("127.")}
     return sorted(ips)
 
 
