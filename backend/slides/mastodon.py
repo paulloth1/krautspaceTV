@@ -4,8 +4,7 @@ from urllib.parse import quote
 
 from markupsafe import escape
 
-import httpx
-
+from ._http import fetch_json, url_ok
 from .registry import ConfigField, SlideType, register
 
 TAG_RE = re.compile(r"<[^>]+>")
@@ -31,23 +30,14 @@ def _headers(config: dict) -> dict:
 async def is_available(config: dict) -> bool:
     if not config.get("instance") or not config.get("hashtag"):
         return False
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(_timeline_url(config, 1), headers=_headers(config))
-            return resp.status_code == 200
-    except httpx.HTTPError:
-        return False
+    return await url_ok(_timeline_url(config, 1), headers=_headers(config))
 
 
 async def render(config: dict) -> str:
     hashtag = config.get("hashtag", "").strip().lstrip("#")
     title = config.get("title") or f"#{hashtag}"
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(_timeline_url(config, 10), headers=_headers(config))
-            resp.raise_for_status()
-            statuses = resp.json()
-    except (httpx.HTTPError, ValueError):
+    statuses = await fetch_json(_timeline_url(config, 10), headers=_headers(config))
+    if statuses is None:
         return f'<div class="slide slide-mastodon"><h2>{escape(title)}</h2><p>Unable to load posts.</p></div>'
 
     items = []

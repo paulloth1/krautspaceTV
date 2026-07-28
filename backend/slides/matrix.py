@@ -2,8 +2,7 @@ from urllib.parse import quote
 
 from markupsafe import escape
 
-import httpx
-
+from ._http import fetch_json, url_ok
 from .registry import ConfigField, SlideType, register
 
 
@@ -21,22 +20,13 @@ def _headers(config: dict) -> dict:
 async def is_available(config: dict) -> bool:
     if not config.get("homeserver") or not config.get("room_id") or not config.get("access_token"):
         return False
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(_messages_url(config, 1), headers=_headers(config))
-            return resp.status_code == 200
-    except httpx.HTTPError:
-        return False
+    return await url_ok(_messages_url(config, 1), headers=_headers(config))
 
 
 async def render(config: dict) -> str:
     room_name = config.get("room_name") or "Matrix chat"
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(_messages_url(config, 15), headers=_headers(config))
-            resp.raise_for_status()
-            data = resp.json()
-    except httpx.HTTPError:
+    data = await fetch_json(_messages_url(config, 15), headers=_headers(config))
+    if data is None:
         return f'<div class="slide slide-matrix"><h2>{escape(room_name)}</h2><p>Unable to load messages.</p></div>'
 
     events = [
