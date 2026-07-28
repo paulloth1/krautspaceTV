@@ -28,6 +28,17 @@ HEAVY_SCRIPT_HOSTS = [
 ]
 SCRIPT_TAG_RE = re.compile(r"<script\b[^>]*src=[\"']([^\"']+)[\"'][^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
 
+# The kiosk display has no one to click "accept"/"reject" on a cookie banner, so
+# just hide the common ones outright rather than leaving them stuck on screen.
+COOKIE_BANNER_CSS = """
+<style>
+.contao-cookiebar, .cc-window, .cookie-consent, .cookiebar, .cookie-banner,
+#cookie-consent, #cookiebar, #CybotCookiebotDialog, .cmpbox, .fc-consent-root {
+  display: none !important;
+}
+</style>
+"""
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,8 +95,10 @@ async def proxy(url: str, cookies: str = ""):
 
     body = SCRIPT_TAG_RE.sub(_strip_heavy_script, body)
 
-    new_body, count = re.subn(r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag, body, count=1)
-    body = new_body if count else base_tag + body
+    new_body, count = re.subn(
+        r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag + COOKIE_BANNER_CSS, body, count=1
+    )
+    body = new_body if count else base_tag + COOKIE_BANNER_CSS + body
 
     return Response(content=body, media_type=content_type)
 
