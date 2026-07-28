@@ -31,7 +31,8 @@
               .then(function (resp) { return resp.json(); })
               .then(function (data) {
                 var name = data.id === null ? "None" : (slideNames[data.id] || ("Slide #" + data.id));
-                label.textContent = "Now displaying: " + name + (data.forced ? " (forced)" : "");
+                var idSuffix = data.id === null ? "" : " (#" + data.id + ")";
+                label.textContent = "Now displaying: " + name + idSuffix + (data.forced ? " (forced)" : "");
 
                 var rows = document.querySelectorAll("table.slides tbody tr");
                 rows.forEach(function (row) {
@@ -81,6 +82,7 @@
       <table class="slides">
         <thead>
           <tr>
+            <th>#</th>
             <th>Name</th>
             <th>Type</th>
             <th>Status</th>
@@ -91,6 +93,7 @@
         <tbody>
           {% for slide in slides %}
           <tr data-slide-id="{{ slide.id }}">
+            <td class="slide-id">{{ slide.id }}</td>
             <td>{{ slide.name }}</td>
             <td>{{ registry[slide.type].label if slide.type in registry else slide.type }}</td>
             <td>

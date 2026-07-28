@@ -140,6 +140,12 @@ table.slides tbody tr.current-slide:nth-child(2n) {
   color: #555;
 }
 
+.slide-id {
+  font-variant-numeric: tabular-nums;
+  color: #999;
+  width: 2.5rem;
+}
+
 .current-slide .time-left {
   color: #1d4ed8;
   font-weight: 600;
