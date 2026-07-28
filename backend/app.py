@@ -120,10 +120,16 @@ async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
         url = config.get("src", "")
         cookies = config.get("cookies", "") or ""
 
+    if not urlparse(url).scheme:
+        return Response(content="Missing or invalid 'url'", status_code=400)
+
     is_finalrewind = urlparse(url).hostname == "dbf.finalrewind.org"
     headers = {"Cookie": cookies} if cookies else {}
-    async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-        resp = await client.get(url, headers=headers)
+    try:
+        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+            resp = await client.get(url, headers=headers)
+    except httpx.HTTPError:
+        return Response(content="Upstream fetch failed", status_code=502)
 
     content_type = resp.headers.get("content-type", "text/html")
     if "text/html" not in content_type:

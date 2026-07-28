@@ -112,6 +112,8 @@ async def toggle_slide(slide_id: int) -> None:
 async def move_slide(slide_id: int, direction: str) -> None:
     slides = await list_slides()
     ids = [s["id"] for s in slides]
+    if slide_id not in ids:
+        return  # already deleted by someone else; nothing to move
     idx = ids.index(slide_id)
     swap_idx = idx - 1 if direction == "up" else idx + 1
     if swap_idx < 0 or swap_idx >= len(slides):
