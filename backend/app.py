@@ -44,14 +44,20 @@ async def slide_current():
 
 
 @app.get("/proxy")
-async def proxy(url: str):
+async def proxy(url: str, cookies: str = ""):
     """Fetch a page server-side and strip framing-blocker headers so it can be
     embedded in the kiosk's iframe slides. Only the top-level document needs this
     (frame-ancestors/X-Frame-Options only apply to the framed document itself);
     sub-resources (css/js/images) are left to load directly from the origin, so
-    we just inject a <base> tag pointing back at the real page URL."""
+    we just inject a <base> tag pointing back at the real page URL.
+
+    `cookies` is an optional raw "name=value; name2=value2" header, pre-captured
+    from a real browser after manually accepting/rejecting a site's cookie banner
+    once, so the site sees existing consent and skips its (often very heavy)
+    consent-management JS entirely instead of rendering the banner every load."""
+    headers = {"Cookie": cookies} if cookies else {}
     async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-        resp = await client.get(url)
+        resp = await client.get(url, headers=headers)
 
     content_type = resp.headers.get("content-type", "text/html")
     if "text/html" not in content_type:

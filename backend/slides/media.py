@@ -26,7 +26,13 @@ async def render(config: dict) -> str:
         body = f'<video src="{escape(src)}" autoplay muted loop playsinline></video>'
     elif kind == "url":
         bypass_csp = str(config.get("bypass_csp") or "").lower() in ("1", "true", "yes", "on")
-        iframe_src = f"/proxy?url={quote(src, safe='')}" if bypass_csp else src
+        cookies = (config.get("cookies") or "").strip()
+        if bypass_csp:
+            iframe_src = f"/proxy?url={quote(src, safe='')}"
+            if cookies:
+                iframe_src += f"&cookies={quote(cookies, safe='')}"
+        else:
+            iframe_src = src
         if scale != 1:
             inv = 100 / scale
             style = (
@@ -64,6 +70,14 @@ register(
                 options=["no", "yes"],
                 required=False,
                 default="no",
+            ),
+            ConfigField(
+                name="cookies",
+                label="Cookies to send (only used with bypass CSP) — paste 'name=value; name2=value2' "
+                "captured from a real browser after accepting/rejecting the site's cookie banner once, "
+                "so it isn't re-shown (and its heavy consent JS isn't re-run) on every load",
+                type="textarea",
+                required=False,
             ),
         ],
         is_available=is_available,
