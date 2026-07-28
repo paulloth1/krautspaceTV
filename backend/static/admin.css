@@ -1,4 +1,9 @@
-/* Admin control UI — plain server-rendered pages, no JS framework. */
+/* Admin control UI — plain server-rendered pages, no JS framework.
+   Palette/typography deliberately matches kraut.space's own site:
+   EB Garamond serif body text, Signika sans-serif headings, monochrome
+   white/#333/#999/black palette with soft box-shadows instead of borders. */
+
+@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital@0;1&family=Signika:wght@300;500;700&display=swap');
 
 * {
   box-sizing: border-box;
@@ -6,16 +11,23 @@
 
 body {
   margin: 0;
-  font-family: "DejaVu Sans", "Liberation Sans", Arial, Helvetica, sans-serif;
-  background: #f4f5f7;
-  color: #1a1a1a;
-  line-height: 1.4;
+  font-family: 'EB Garamond', serif;
+  font-size: 1.1em;
+  background: #ffffff;
+  color: #333333;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Signika', sans-serif;
+  font-weight: 500;
 }
 
 header.topbar {
-  background: #1f2933;
+  background: #333333;
   color: #fff;
   padding: 1rem 1.5rem;
+  box-shadow: 1px 1px 20px rgba(0, 0, 0, 0.4);
 }
 
 header.topbar h1 {
@@ -31,22 +43,22 @@ main {
 
 section {
   background: #fff;
-  border: 1px solid #dde1e6;
-  border-radius: 8px;
+  box-shadow: 1px 1px 15px rgba(0, 0, 0, 0.2);
   padding: 1.25rem 1.5rem;
   margin-bottom: 1.5rem;
 }
 
 section h2 {
   margin-top: 0;
-  font-size: 1.1rem;
-  border-bottom: 1px solid #eee;
+  font-size: 1.2rem;
+  border-bottom: 1px solid #999999;
   padding-bottom: 0.5rem;
 }
 
 label {
   display: block;
-  font-weight: 600;
+  font-family: 'Signika', sans-serif;
+  font-weight: 500;
   margin-bottom: 0.25rem;
   font-size: 0.9rem;
 }
@@ -59,10 +71,9 @@ textarea {
   width: 100%;
   padding: 0.5rem;
   font-size: 1rem;
-  border: 1px solid #c3c9d1;
-  border-radius: 4px;
-  margin-bottom: 1rem;
   font-family: inherit;
+  border: 1px solid #999999;
+  margin-bottom: 1rem;
 }
 
 textarea {
@@ -75,33 +86,33 @@ textarea {
 }
 
 button, input[type="submit"] {
-  background: #2563eb;
+  background: #333333;
   color: #fff;
   border: none;
   padding: 0.55rem 1.1rem;
-  border-radius: 4px;
+  font-family: 'Signika', sans-serif;
   font-size: 0.95rem;
   cursor: pointer;
 }
 
 button:hover, input[type="submit"]:hover {
-  background: #1d4ed8;
+  background: #000000;
 }
 
 button.secondary {
-  background: #6b7280;
+  background: #999999;
 }
 
 button.secondary:hover {
-  background: #4b5563;
+  background: #777777;
 }
 
 button.danger {
-  background: #dc2626;
+  background: #b03a2e;
 }
 
 button.danger:hover {
-  background: #b91c1c;
+  background: #7f2a21;
 }
 
 table.slides {
@@ -112,11 +123,12 @@ table.slides {
 table.slides th, table.slides td {
   text-align: left;
   padding: 0.5rem 0.6rem;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid #dddddd;
   vertical-align: middle;
 }
 
 table.slides th {
+  font-family: 'Signika', sans-serif;
   font-size: 0.8rem;
   text-transform: uppercase;
   letter-spacing: 0.03em;
@@ -124,15 +136,15 @@ table.slides th {
 }
 
 table.slides tbody tr:nth-child(2n) {
-  background: #f8f9fb;
+  background: #f7f7f7;
 }
 
 table.slides tbody tr.current-slide {
-  background: #dbeafe;
+  background: #eaeaea;
 }
 
 table.slides tbody tr.current-slide:nth-child(2n) {
-  background: #cbdcf9;
+  background: #e0e0e0;
 }
 
 .time-left {
@@ -147,13 +159,14 @@ table.slides tbody tr.current-slide:nth-child(2n) {
 }
 
 .current-slide .time-left {
-  color: #1d4ed8;
-  font-weight: 600;
+  color: #333333;
+  font-weight: 700;
 }
 
 .now-displaying {
-  font-weight: 600;
-  color: #1f2933;
+  font-family: 'Signika', sans-serif;
+  font-weight: 500;
+  color: #333333;
 }
 
 .stat-grid {
@@ -170,25 +183,26 @@ table.slides tbody tr.current-slide:nth-child(2n) {
 
 .stat-grid dd {
   margin: 0;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .badge {
   display: inline-block;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
+  font-family: 'Signika', sans-serif;
   font-size: 0.75rem;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .badge-enabled {
-  background: #dcfce7;
-  color: #166534;
+  background: #e0f0e3;
+  color: #2d5d3a;
 }
 
 .badge-disabled {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: #eeeeee;
+  color: #777777;
 }
 
 .row-actions {
@@ -209,13 +223,12 @@ table.slides tbody tr.current-slide:nth-child(2n) {
 }
 
 a.button {
-  background: #2563eb;
+  background: #333333;
   color: #fff;
-  border-radius: 4px;
 }
 
 a.button:hover {
-  background: #1d4ed8;
+  background: #000000;
 }
 
 .add-slide-form {
@@ -232,15 +245,15 @@ a.button:hover {
 }
 
 .empty-note {
-  color: #6b7280;
+  color: #777777;
   font-style: italic;
 }
 
 .back-link {
   display: inline-block;
   margin-top: 1rem;
-  color: #2563eb;
-  text-decoration: none;
+  color: #333333;
+  text-decoration: underline 1px dotted;
 }
 
 .back-link:hover {
@@ -248,18 +261,17 @@ a.button:hover {
 }
 
 .required {
-  color: #dc2626;
+  color: #b03a2e;
 }
 
 .field-hint {
   font-weight: 400;
-  color: #6b7280;
+  color: #777777;
   font-size: 0.85rem;
 }
 
 .preview-image {
   max-width: 100%;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  box-shadow: 1px 1px 15px rgba(0, 0, 0, 0.3);
   background: #111827;
 }
