@@ -1,29 +1,19 @@
 from markupsafe import escape
 
-import httpx
-
+from ._http import fetch_json, url_ok
 from .registry import ConfigField, SlideType, register
 
 
 async def is_available(config: dict) -> bool:
     if not config.get("api_url"):
         return False
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(config["api_url"])
-            return resp.status_code == 200
-    except httpx.HTTPError:
-        return False
+    return await url_ok(config["api_url"])
 
 
 async def render(config: dict) -> str:
     title = config.get("title") or "Departures"
-    try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.get(config["api_url"])
-            resp.raise_for_status()
-            data = resp.json()
-    except (httpx.HTTPError, ValueError):
+    data = await fetch_json(config["api_url"])
+    if data is None:
         return f'<div class="slide slide-train"><h2>{escape(title)}</h2><p>Unable to load departures.</p></div>'
 
     departures = data.get("departures", [])
