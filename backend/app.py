@@ -82,9 +82,17 @@ async def display(request: Request):
 async def slide_current():
     if IS_ROTATION_OWNER:
         return await STATE.snapshot()
-    async with httpx.AsyncClient(timeout=5) as client:
-        resp = await client.get(f"{ROTATION_OWNER_URL}/api/slide/current")
-        return resp.json()
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{ROTATION_OWNER_URL}/api/slide/current")
+            return resp.json()
+    except httpx.HTTPError:
+        return {
+            "id": None,
+            "html": '<div class="slide slide-empty"><h2>Rotation owner unreachable</h2></div>',
+            "forced": False,
+            "seconds_remaining": None,
+        }
 
 
 @app.get("/proxy")
@@ -207,6 +215,8 @@ async def edit_slide_form(request: Request, slide_id: int):
     if slide is None:
         return RedirectResponse("/", status_code=303)
     slide_type = REGISTRY.get(slide["type"])
+    if slide_type is None:
+        return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse(
         request,
         "slide_form.html",
@@ -221,6 +231,8 @@ async def update_slide(request: Request, slide_id: int):
     if slide is None:
         return RedirectResponse("/", status_code=303)
     slide_type = REGISTRY.get(slide["type"])
+    if slide_type is None:
+        return RedirectResponse("/", status_code=303)
     name = form.get("_name") or slide["name"]
     config = {f.name: form.get(f.name, "") for f in slide_type.config_fields}
     await db.update_slide(slide_id, name, config)
@@ -244,8 +256,11 @@ async def view_now(slide_id: int):
     if IS_ROTATION_OWNER:
         await STATE.request_forced(slide_id)
     else:
-        async with httpx.AsyncClient(timeout=5) as client:
-            await client.post(f"{ROTATION_OWNER_URL}/admin/slides/{slide_id}/view-now")
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                await client.post(f"{ROTATION_OWNER_URL}/admin/slides/{slide_id}/view-now")
+        except httpx.HTTPError:
+            pass  # rotation owner unreachable; still redirect back rather than 500
     return RedirectResponse("/", status_code=303)
 
 
@@ -257,5 +272,10 @@ async def move_slide(slide_id: int, direction: str = Form(...)):
 
 @app.post("/admin/settings")
 async def update_settings(rotation_interval_seconds: str = Form(...)):
-    await db.set_setting("rotation_interval_seconds", rotation_interval_seconds)
+    try:
+        value = int(rotation_interval_seconds)
+    except ValueError:
+        value = None
+    if value is not None and value > 0:
+        await db.set_setting("rotation_interval_seconds", str(value))
     return RedirectResponse("/", status_code=303)
