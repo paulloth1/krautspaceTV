@@ -15,12 +15,90 @@
     <section>
       <h2>Live preview</h2>
       <img id="preview" class="preview-image" src="/api/preview.png" alt="HDMI output preview">
+      <p id="now-displaying" class="now-displaying">Now displaying: &hellip;</p>
       <script>
         (function () {
           var img = document.getElementById("preview");
-          setInterval(function () {
+          var label = document.getElementById("now-displaying");
+          var slideNames = {{ slide_names_json | safe }};
+
+          function refreshPreview() {
             img.src = "/api/preview.png?t=" + Date.now();
-          }, 5000);
+          }
+
+          function refreshNowDisplaying() {
+            fetch("/api/slide/current", { cache: "no-store" })
+              .then(function (resp) { return resp.json(); })
+              .then(function (data) {
+                var name = data.id === null ? "None" : (slideNames[data.id] || ("Slide #" + data.id));
+                label.textContent = "Now displaying: " + name + (data.forced ? " (forced)" : "");
+
+                var rows = document.querySelectorAll("table.slides tbody tr");
+                rows.forEach(function (row) {
+                  var isCurrent = String(data.id) === row.getAttribute("data-slide-id");
+                  row.classList.toggle("current-slide", isCurrent);
+                  var cell = row.querySelector(".time-left");
+                  if (!cell) return;
+                  if (isCurrent && data.seconds_remaining !== null && data.seconds_remaining !== undefined) {
+                    cell.textContent = data.seconds_remaining + "s" + (data.forced ? " (forced)" : "");
+                  } else {
+                    cell.textContent = "—";
+                  }
+                });
+              })
+              .catch(function () {});
+          }
+
+          refreshPreview();
+          refreshNowDisplaying();
+          setInterval(refreshPreview, 5000);
+          setInterval(refreshNowDisplaying, 5000);
+        })();
+      </script>
+    </section>
+
+    <section>
+      <h2>System status</h2>
+      <dl id="system-status" class="stat-grid"><dt>Loading&hellip;</dt><dd></dd></dl>
+      <script>
+        (function () {
+          var el = document.getElementById("system-status");
+
+          function formatUptime(seconds) {
+            var d = Math.floor(seconds / 86400);
+            var h = Math.floor((seconds % 86400) / 3600);
+            var m = Math.floor((seconds % 3600) / 60);
+            return d + "d " + h + "h " + m + "m";
+          }
+
+          function refresh() {
+            fetch("/api/system/status", { cache: "no-store" })
+              .then(function (resp) { return resp.json(); })
+              .then(function (data) {
+                var t = data.throttled || {};
+                var warnings = [];
+                if (t.undervoltage_now) warnings.push("undervoltage NOW");
+                if (t.throttled_now) warnings.push("throttled NOW");
+                if (t.undervoltage_since_boot) warnings.push("undervoltage since boot");
+                if (t.throttled_since_boot) warnings.push("throttled since boot");
+                var rows = [
+                  ["IP address(es)", data.ip_addresses.join(", ") || "unknown"],
+                  ["Hostname", data.hostname],
+                  ["CPU temp", data.cpu_temp_c != null ? data.cpu_temp_c.toFixed(1) + " °C" : "n/a"],
+                  ["Load average", data.load_avg["1m"].toFixed(2) + " / " + data.load_avg["5m"].toFixed(2) + " / " + data.load_avg["15m"].toFixed(2)],
+                  ["Memory", data.memory.used_mb + " / " + data.memory.total_mb + " MB (" + data.memory.percent + "%)"],
+                  ["Uptime", formatUptime(data.uptime_seconds)],
+                  ["Power", warnings.length ? warnings.join(", ") : "OK"],
+                ];
+                el.innerHTML = rows.map(function (r) {
+                  return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>";
+                }).join("");
+              })
+              .catch(function () {});
+          }
+
+          refresh();
+          setInterval(refresh, 10000);
         })();
       </script>
     </section>
@@ -52,12 +130,13 @@
             <th>Name</th>
             <th>Type</th>
             <th>Status</th>
+            <th>Time left</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           {% for slide in slides %}
-          <tr>
+          <tr data-slide-id="{{ slide.id }}">
             <td>{{ slide.name }}</td>
             <td>{{ registry[slide.type].label if slide.type in registry else slide.type }}</td>
             <td>
@@ -67,6 +146,7 @@
               <span class="badge badge-disabled">Disabled</span>
               {% endif %}
             </td>
+            <td class="time-left">&mdash;</td>
             <td>
               <div class="row-actions">
                 <a class="button" href="/admin/slides/{{ slide.id }}/edit">Edit</a>

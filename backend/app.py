@@ -12,7 +12,7 @@ from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from . import db
+from . import db, system_info
 from .preview import get_preview_png
 from .rotation import STATE, rotation_loop
 from .slides import REGISTRY
@@ -68,6 +68,11 @@ async def proxy(url: str):
     return Response(content=body, media_type=content_type)
 
 
+@app.get("/api/system/status")
+async def system_status():
+    return await system_info.get_stats()
+
+
 @app.get("/api/preview.png")
 async def preview_png():
     data = await get_preview_png()
@@ -80,6 +85,7 @@ async def preview_png():
 async def admin(request: Request):
     slides = await db.list_slides()
     interval = await db.get_setting("rotation_interval_seconds", "60")
+    slide_names = {slide["id"]: slide["name"] for slide in slides}
     return templates.TemplateResponse(
         request,
         "admin.html",
@@ -87,6 +93,7 @@ async def admin(request: Request):
             "slides": slides,
             "registry": REGISTRY,
             "rotation_interval": interval,
+            "slide_names_json": json.dumps(slide_names),
         },
     )
 

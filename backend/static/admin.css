@@ -123,6 +123,50 @@ table.slides th {
   color: #555;
 }
 
+table.slides tbody tr:nth-child(2n) {
+  background: #f8f9fb;
+}
+
+table.slides tbody tr.current-slide {
+  background: #dbeafe;
+}
+
+table.slides tbody tr.current-slide:nth-child(2n) {
+  background: #cbdcf9;
+}
+
+.time-left {
+  font-variant-numeric: tabular-nums;
+  color: #555;
+}
+
+.current-slide .time-left {
+  color: #1d4ed8;
+  font-weight: 600;
+}
+
+.now-displaying {
+  font-weight: 600;
+  color: #1f2933;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0;
+}
+
+.stat-grid dt {
+  color: #555;
+  font-size: 0.85rem;
+}
+
+.stat-grid dd {
+  margin: 0;
+  font-weight: 600;
+}
+
 .badge {
   display: inline-block;
   padding: 0.15rem 0.55rem;

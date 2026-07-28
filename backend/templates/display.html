@@ -41,11 +41,11 @@
         }, FADE_MS + 100);
       }
 
-      function showHtml(htmlStr) {
+      function showHtml(htmlStr, immediate) {
         var gen = ++pendingGen;
         standby.innerHTML = htmlStr;
         var media = standby.querySelector("iframe, img");
-        if (!media) {
+        if (!media || immediate) {
           swapToStandby();
           return;
         }
@@ -94,7 +94,7 @@
         }
         lastId = data.id;
         lastHtml = data.html;
-        showHtml(data.html);
+        showHtml(data.html, data.forced);
       }
 
       function poll() {
