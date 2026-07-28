@@ -7,8 +7,12 @@ admin UI for managing slides.
 
 ## Using it
 
-- Admin UI: `http://krautspaceTV/admin` (or `https://` on port 443/8080
-  — self-signed cert, browser will warn once).
+- Admin UI: `http://krautspaceTV/` (or `https://` on port 443/8080 —
+  self-signed cert, browser will warn once). It's intentionally open to
+  anyone on the network — the point is to let people add their own content.
+- The kiosk display itself lives at `/display`, served only on the
+  kiosk-internal `127.0.0.1:8081` binding — you won't normally load this
+  directly.
 - Add slides via "Add slide", pick a type, fill in its fields, save.
 - "View now" force-pushes a slide to the display immediately, without
   waiting for rotation.
@@ -31,7 +35,11 @@ admin UI for managing slides.
 - `cookies` (only used with `bypass_csp`) lets you paste a raw
   `name=value; name2=value2` header captured from a real browser after
   accepting/rejecting a site's cookie banner once, so the site sees existing
-  consent on every load.
+  consent on every load. It's looked up server-side via the slide's id
+  (`/proxy?slide_id=...`) rather than appearing in the iframe's URL.
+- The dark-theme/script-stripping rewrites above only apply to
+  `dbf.finalrewind.org`; `/proxy` otherwise passes pages through with just
+  the generic ad-script stripping and cookie-banner hiding.
 
 ## Known limitations
 
@@ -46,13 +54,17 @@ admin UI for managing slides.
 <summary><h2>Architecture</h2></summary>
 
 - **Backend**: FastAPI + Uvicorn (`backend/app.py`), serving:
-  - `/` — the kiosk display page (`templates/display.html`), polled by the
-    browser every 5s for the current slide's rendered HTML.
-  - `/admin` — the control UI for adding/editing/reordering/enabling slides,
+  - `/` — the admin control UI for adding/editing/reordering/enabling slides,
     a live HDMI-output preview, and basic system stats.
+  - `/display` — the kiosk display page (`templates/display.html`), polled by
+    the browser every 5s for the current slide's rendered HTML. Only bound
+    on the kiosk-internal `127.0.0.1:8081` instance.
   - `/proxy` — a server-side fetch used by slides that need X-Frame-Options/
-    CSP bypassed, heavy ad-consent scripts stripped, or a forced dark theme
-    (see `backend/app.py` for the exact rewriting rules).
+    CSP bypassed, heavy ad-consent scripts stripped, or (for
+    `dbf.finalrewind.org` specifically) a forced dark theme. Accepts either
+    `?url=...&cookies=...` directly, or `?slide_id=...` to look both up
+    server-side from a stored slide's config (see `backend/app.py` for the
+    exact rewriting rules).
   - `/api/slide/current`, `/api/preview.png`, `/api/system/status` — JSON/PNG
     endpoints consumed by the display and admin pages.
 - **Rotation** (`backend/rotation.py`): a background asyncio loop that walks
@@ -61,19 +73,23 @@ admin UI for managing slides.
 - **Slide types** (`backend/slides/`): pluggable, each with `is_available()`
   and `render()` — `media` (image/video/iframe URL), `webcam` (MJPEG stream
   availability check), `mastodon` (hashtag timeline), `matrix` (room
-  messages), `train` (generic departure-board JSON API).
-- **Storage**: SQLite via `aiosqlite` (`signage.db`, gitignored) — slides and
-  settings only; no secrets belong in git.
+  messages), `train` (generic departure-board JSON API). Common HTTP-fetch
+  boilerplate lives in `backend/slides/_http.py`.
+- **Storage**: SQLite via `aiosqlite` (`signage.db`, gitignored, WAL mode) —
+  slides and settings only; no secrets belong in git.
 - **Kiosk display**: X11 (no window manager) + Chromium in `--kiosk` mode
-  (`deploy/xinitrc`), showing the backend's own display page full-screen.
+  (`deploy/xinitrc`), showing the backend's own `/display` page full-screen.
 
 The backend runs as **four separate uvicorn processes** bound to different
 host:port combinations, since a single port can't serve both plain HTTP and
-TLS:
+TLS. Only one of them ("the rotation owner" — `backend.service`, set via
+`SIGNAGE_ROTATION_OWNER=1`) actually runs the rotation loop; the other three
+forward `/api/slide/current` reads and `view-now` writes to it over loopback
+HTTP, so every port shows consistent state:
 
 | Service | Bind | Purpose |
 |---|---|---|
-| `backend.service` | `127.0.0.1:8081` | kiosk-internal only, plain HTTP |
+| `backend.service` | `127.0.0.1:8081` | kiosk-internal only; owns rotation |
 | `backend-http.service` | `0.0.0.0:80` | LAN admin access, no port needed |
 | `backend-tls.service` | `0.0.0.0:8080` | LAN admin access over HTTPS |
 | `backend-tls-443.service` | `0.0.0.0:443` | LAN admin access over HTTPS, no port needed |
@@ -128,7 +144,15 @@ sudo systemctl enable --now backend.service backend-http.service \
 
 `kiosk.service` starts an X session on `tty1` via `deploy/xinitrc` and
 launches Chromium in kiosk mode pointed at the internal backend
-(`http://127.0.0.1:8081/`). It waits for the backend to respond before
-starting X (see `ExecStartPre` in `deploy/kiosk.service`).
+(`http://127.0.0.1:8081/display`). It waits for the backend to respond
+before starting X (see `ExecStartPre` in `deploy/kiosk.service`).
+
+### Running tests
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
+.venv/bin/pytest
+```
 
 </details>
