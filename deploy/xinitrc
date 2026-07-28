@@ -33,4 +33,4 @@ exec chromium \
   --check-for-update-interval=31536000 \
   --disk-cache-dir=/dev/null \
   --incognito \
-  http://127.0.0.1:8081/
+  http://127.0.0.1:8081/display

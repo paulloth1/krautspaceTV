@@ -12,7 +12,8 @@
   </header>
   <main>
     <section>
-      <form method="post" action="{{ action }}">
+      <form method="post" action="{{ action }}"
+            {% if not slide %}onsubmit="return confirm('Add this slide to the rotation?');"{% endif %}>
         <input type="hidden" name="_type" value="{{ slide_type.key }}">
 
         <div class="form-row">
@@ -79,7 +80,7 @@
 
         <button type="submit">{{ "Save changes" if slide else "Add slide" }}</button>
       </form>
-      <a class="back-link" href="/admin">&larr; Back to admin</a>
+      <a class="back-link" href="/">&larr; Back to admin</a>
     </section>
   </main>
 </body>

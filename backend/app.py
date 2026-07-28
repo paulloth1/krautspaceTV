@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import re
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -18,6 +19,15 @@ from .rotation import STATE, rotation_loop
 from .slides import REGISTRY
 
 BASE_DIR = Path(__file__).parent
+
+# We run four separate uvicorn processes bound to different host:ports (see
+# README) since one port can't serve both plain HTTP and TLS. Only one of them
+# ("the owner", the kiosk-internal 127.0.0.1:8081 instance that actually drives
+# the display) runs the rotation loop; the others forward reads/writes of the
+# current-slide state to it over loopback HTTP, so "View now" and "now
+# displaying" are consistent no matter which port a client used.
+IS_ROTATION_OWNER = os.environ.get("SIGNAGE_ROTATION_OWNER") == "1"
+ROTATION_OWNER_URL = os.environ.get("SIGNAGE_ROTATION_OWNER_URL", "http://127.0.0.1:8081")
 
 # Third-party ad/consent (IAB TCF) vendor scripts known to hang the Pi's weak
 # CPU by synchronously processing hundreds of vendor entries on page load.
@@ -52,9 +62,10 @@ COOKIE_BANNER_CSS = """
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init_db()
-    task = asyncio.create_task(rotation_loop())
+    task = asyncio.create_task(rotation_loop()) if IS_ROTATION_OWNER else None
     yield
-    task.cancel()
+    if task:
+        task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -62,14 +73,18 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
-@app.get("/")
+@app.get("/display")
 async def display(request: Request):
     return templates.TemplateResponse(request, "display.html", {})
 
 
 @app.get("/api/slide/current")
 async def slide_current():
-    return await STATE.snapshot()
+    if IS_ROTATION_OWNER:
+        return await STATE.snapshot()
+    async with httpx.AsyncClient(timeout=5) as client:
+        resp = await client.get(f"{ROTATION_OWNER_URL}/api/slide/current")
+        return resp.json()
 
 
 @app.get("/proxy")
@@ -129,7 +144,7 @@ async def preview_png():
     return Response(content=data, media_type="image/png")
 
 
-@app.get("/admin")
+@app.get("/")
 async def admin(request: Request):
     slides = await db.list_slides()
     interval = await db.get_setting("rotation_interval_seconds", "60")
@@ -150,7 +165,7 @@ async def admin(request: Request):
 async def new_slide_form(request: Request, type: str):
     slide_type = REGISTRY.get(type)
     if slide_type is None:
-        return RedirectResponse("/admin", status_code=303)
+        return RedirectResponse("/", status_code=303)
     return templates.TemplateResponse(
         request,
         "slide_form.html",
@@ -165,17 +180,17 @@ async def create_slide(request: Request):
     name = form.get("_name") or slide_type_key
     slide_type = REGISTRY.get(slide_type_key)
     if slide_type is None:
-        return RedirectResponse("/admin", status_code=303)
+        return RedirectResponse("/", status_code=303)
     config = {f.name: form.get(f.name, "") for f in slide_type.config_fields}
     await db.add_slide(slide_type_key, name, config)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.get("/admin/slides/{slide_id}/edit")
 async def edit_slide_form(request: Request, slide_id: int):
     slide = await db.get_slide(slide_id)
     if slide is None:
-        return RedirectResponse("/admin", status_code=303)
+        return RedirectResponse("/", status_code=303)
     slide_type = REGISTRY.get(slide["type"])
     return templates.TemplateResponse(
         request,
@@ -189,39 +204,43 @@ async def update_slide(request: Request, slide_id: int):
     form = await request.form()
     slide = await db.get_slide(slide_id)
     if slide is None:
-        return RedirectResponse("/admin", status_code=303)
+        return RedirectResponse("/", status_code=303)
     slide_type = REGISTRY.get(slide["type"])
     name = form.get("_name") or slide["name"]
     config = {f.name: form.get(f.name, "") for f in slide_type.config_fields}
     await db.update_slide(slide_id, name, config)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/slides/{slide_id}/delete")
 async def delete_slide(slide_id: int):
     await db.delete_slide(slide_id)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/slides/{slide_id}/toggle")
 async def toggle_slide(slide_id: int):
     await db.toggle_slide(slide_id)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/slides/{slide_id}/view-now")
 async def view_now(slide_id: int):
-    await STATE.request_forced(slide_id)
-    return RedirectResponse("/admin", status_code=303)
+    if IS_ROTATION_OWNER:
+        await STATE.request_forced(slide_id)
+    else:
+        async with httpx.AsyncClient(timeout=5) as client:
+            await client.post(f"{ROTATION_OWNER_URL}/admin/slides/{slide_id}/view-now")
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/slides/{slide_id}/move")
 async def move_slide(slide_id: int, direction: str = Form(...)):
     await db.move_slide(slide_id, direction)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)
 
 
 @app.post("/admin/settings")
 async def update_settings(rotation_interval_seconds: str = Form(...)):
     await db.set_setting("rotation_interval_seconds", rotation_interval_seconds)
-    return RedirectResponse("/admin", status_code=303)
+    return RedirectResponse("/", status_code=303)

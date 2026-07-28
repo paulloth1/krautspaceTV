@@ -13,6 +13,9 @@ DEFAULT_SETTINGS = {
 
 async def init_db() -> None:
     async with aiosqlite.connect(DB_PATH) as db:
+        # WAL allows concurrent readers alongside a writer, which matters here
+        # since multiple backend processes (see README) read/write this file.
+        await db.execute("PRAGMA journal_mode=WAL")
         await db.execute(
             """
             CREATE TABLE IF NOT EXISTS slides (
