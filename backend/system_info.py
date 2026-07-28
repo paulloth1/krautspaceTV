@@ -75,8 +75,8 @@ def _decode_throttled(raw: str) -> dict:
 
 
 async def get_stats() -> dict:
-    temp_raw, throttled_raw = await asyncio.gather(
-        _vcgencmd("measure_temp"), _vcgencmd("get_throttled")
+    temp_raw, throttled_raw, volts_raw = await asyncio.gather(
+        _vcgencmd("measure_temp"), _vcgencmd("get_throttled"), _vcgencmd("measure_volts", "core")
     )
     temp_c = None
     if "=" in temp_raw:
@@ -84,11 +84,18 @@ async def get_stats() -> dict:
             temp_c = float(temp_raw.split("=")[1].replace("'C", ""))
         except ValueError:
             pass
+    core_voltage_v = None
+    if "=" in volts_raw:
+        try:
+            core_voltage_v = float(volts_raw.split("=")[1].replace("V", ""))
+        except ValueError:
+            pass
     load1, load5, load15 = _read_loadavg()
     return {
         "ip_addresses": get_ip_addresses(),
         "hostname": socket.gethostname(),
         "cpu_temp_c": temp_c,
+        "core_voltage_v": core_voltage_v,
         "throttled": _decode_throttled(throttled_raw),
         "load_avg": {"1m": load1, "5m": load5, "15m": load15},
         "memory": _read_meminfo(),

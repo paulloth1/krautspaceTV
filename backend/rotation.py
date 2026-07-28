@@ -37,6 +37,16 @@ class RotationState:
         self._lock = asyncio.Lock()
         self._forced_event = asyncio.Event()
 
+        # "current" above is the rotation *target* — what the display has been
+        # told to switch to. It can be well ahead of what's actually visible on
+        # screen, since the display buffers/fades over several seconds before
+        # revealing new content (see display.html). The display reports back
+        # here once a slide has actually finished fading in, so admin UIs can
+        # show what's really on screen instead of what rotation has already
+        # moved on to.
+        self.visible_id: int | None = None
+        self.visible_forced: bool = False
+
     async def set_current(
         self, slide_id: int | None, html: str, forced: bool = False, interval: float = 0.0
     ) -> None:
@@ -59,6 +69,15 @@ class RotationState:
                 "forced": self.current_forced,
                 "seconds_remaining": remaining,
             }
+
+    async def report_visible(self, slide_id: int | None, forced: bool) -> None:
+        async with self._lock:
+            self.visible_id = slide_id
+            self.visible_forced = forced
+
+    async def visible_snapshot(self) -> dict:
+        async with self._lock:
+            return {"id": self.visible_id, "forced": self.visible_forced}
 
     async def request_forced(self, slide_id: int) -> None:
         async with self._lock:

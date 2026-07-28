@@ -95,6 +95,34 @@ async def slide_current():
         }
 
 
+@app.get("/api/slide/visible")
+async def slide_visible():
+    if IS_ROTATION_OWNER:
+        return await STATE.visible_snapshot()
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get(f"{ROTATION_OWNER_URL}/api/slide/visible")
+            return resp.json()
+    except httpx.HTTPError:
+        return {"id": None, "forced": False}
+
+
+@app.post("/api/slide/visible")
+async def report_slide_visible(id: int | None = None, forced: bool = False):
+    if IS_ROTATION_OWNER:
+        await STATE.report_visible(id, forced)
+    else:
+        try:
+            async with httpx.AsyncClient(timeout=5) as client:
+                params = {"forced": forced}
+                if id is not None:
+                    params["id"] = id
+                await client.post(f"{ROTATION_OWNER_URL}/api/slide/visible", params=params)
+        except httpx.HTTPError:
+            pass
+    return {"ok": True}
+
+
 @app.get("/proxy")
 async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
     """Fetch a page server-side and strip framing-blocker headers so it can be
