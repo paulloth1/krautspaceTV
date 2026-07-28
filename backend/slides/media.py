@@ -17,7 +17,7 @@ def _parse_scale(config: dict) -> float:
     return scale if scale > 0 else 1
 
 
-async def render(config: dict) -> str:
+async def render(config: dict, slide_id: int | None = None) -> str:
     kind = config.get("kind", "image")
     src = config.get("src", "")
     scale = _parse_scale(config)
@@ -26,8 +26,13 @@ async def render(config: dict) -> str:
         body = f'<video src="{escape(src)}" autoplay muted loop playsinline></video>'
     elif kind == "url":
         bypass_csp = str(config.get("bypass_csp") or "").lower() in ("1", "true", "yes", "on")
-        cookies = (config.get("cookies") or "").strip()
-        if bypass_csp:
+        if bypass_csp and slide_id is not None:
+            # Look the cookie value up server-side via slide_id instead of
+            # passing it through the query string, where it would leak into
+            # the DOM and access logs.
+            iframe_src = f"/proxy?slide_id={slide_id}"
+        elif bypass_csp:
+            cookies = (config.get("cookies") or "").strip()
             iframe_src = f"/proxy?url={quote(src, safe='')}"
             if cookies:
                 iframe_src += f"&cookies={quote(cookies, safe='')}"
@@ -36,12 +41,12 @@ async def render(config: dict) -> str:
         if scale != 1:
             inv = 100 / scale
             style = (
-                f"width:{inv}%;height:{inv}%;border:none;"
+                f"width:{inv}%;height:{inv}%;border:none;overflow:hidden;"
                 f"transform:scale({scale});transform-origin:top left;"
             )
-            body = f'<iframe src="{escape(iframe_src)}" scrolling="no" style="{style}"></iframe>'
+            body = f'<iframe src="{escape(iframe_src)}" style="{style}"></iframe>'
         else:
-            body = f'<iframe src="{escape(iframe_src)}" scrolling="no"></iframe>'
+            body = f'<iframe src="{escape(iframe_src)}" style="overflow:hidden;"></iframe>'
     else:
         body = f'<img src="{escape(src)}" alt="media">'
     return f'<div class="slide slide-media slide-media-{escape(kind)}">{body}</div>'

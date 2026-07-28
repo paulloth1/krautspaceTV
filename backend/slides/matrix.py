@@ -29,7 +29,7 @@ async def is_available(config: dict) -> bool:
         return False
 
 
-async def render(config: dict) -> str:
+async def render(config: dict, slide_id: int | None = None) -> str:
     room_name = config.get("room_name") or "Matrix chat"
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:

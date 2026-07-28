@@ -88,7 +88,7 @@ async def slide_current():
 
 
 @app.get("/proxy")
-async def proxy(url: str, cookies: str = ""):
+async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
     """Fetch a page server-side and strip framing-blocker headers so it can be
     embedded in the kiosk's iframe slides. Only the top-level document needs this
     (frame-ancestors/X-Frame-Options only apply to the framed document itself);
@@ -98,7 +98,21 @@ async def proxy(url: str, cookies: str = ""):
     `cookies` is an optional raw "name=value; name2=value2" header, pre-captured
     from a real browser after manually accepting/rejecting a site's cookie banner
     once, so the site sees existing consent and skips its (often very heavy)
-    consent-management JS entirely instead of rendering the banner every load."""
+    consent-management JS entirely instead of rendering the banner every load.
+
+    If `slide_id` is given, `url`/`cookies` are looked up server-side from the
+    stored slide's config instead, so a cookie value never needs to appear in
+    the URL (visible in the DOM / access logs). The `url`/`cookies` query
+    params remain supported directly, for any caller with no stored slide."""
+    if slide_id is not None:
+        slide = await db.get_slide(slide_id)
+        if slide is None:
+            return Response(content="Slide not found", status_code=404)
+        config = slide["config"]
+        url = config.get("src", "")
+        cookies = config.get("cookies", "") or ""
+
+    is_finalrewind = urlparse(url).hostname == "dbf.finalrewind.org"
     headers = {"Cookie": cookies} if cookies else {}
     async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
         resp = await client.get(url, headers=headers)
@@ -118,10 +132,11 @@ async def proxy(url: str, cookies: str = ""):
         return "" if any(host in src for host in HEAVY_SCRIPT_HOSTS) else m.group(0)
 
     body = SCRIPT_TAG_RE.sub(_strip_heavy_script, body)
-    body = THEME_LINK_RE.sub(lambda m: m.group(0).replace("light.min.css", "dark.min.css"), body)
-    body = INLINE_SCRIPT_RE.sub(
-        lambda m: "" if "prefers-color-scheme" in m.group(1) else m.group(0), body
-    )
+    if is_finalrewind:
+        body = THEME_LINK_RE.sub(lambda m: m.group(0).replace("light.min.css", "dark.min.css"), body)
+        body = INLINE_SCRIPT_RE.sub(
+            lambda m: "" if "prefers-color-scheme" in m.group(1) else m.group(0), body
+        )
 
     new_body, count = re.subn(
         r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag + COOKIE_BANNER_CSS, body, count=1

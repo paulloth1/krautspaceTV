@@ -39,7 +39,7 @@ async def is_available(config: dict) -> bool:
         return False
 
 
-async def render(config: dict) -> str:
+async def render(config: dict, slide_id: int | None = None) -> str:
     hashtag = config.get("hashtag", "").strip().lstrip("#")
     title = config.get("title") or f"#{hashtag}"
     try:
