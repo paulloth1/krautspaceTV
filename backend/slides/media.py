@@ -1,3 +1,5 @@
+from urllib.parse import quote
+
 from markupsafe import escape
 
 from .registry import ConfigField, SlideType, register
@@ -23,15 +25,17 @@ async def render(config: dict) -> str:
     if kind == "video":
         body = f'<video src="{escape(src)}" autoplay muted loop playsinline></video>'
     elif kind == "url":
+        bypass_csp = str(config.get("bypass_csp") or "").lower() in ("1", "true", "yes", "on")
+        iframe_src = f"/proxy?url={quote(src, safe='')}" if bypass_csp else src
         if scale != 1:
             inv = 100 / scale
             style = (
                 f"width:{inv}%;height:{inv}%;border:none;"
                 f"transform:scale({scale});transform-origin:top left;"
             )
-            body = f'<iframe src="{escape(src)}" scrolling="no" style="{style}"></iframe>'
+            body = f'<iframe src="{escape(iframe_src)}" scrolling="no" style="{style}"></iframe>'
         else:
-            body = f'<iframe src="{escape(src)}" scrolling="no"></iframe>'
+            body = f'<iframe src="{escape(iframe_src)}" scrolling="no"></iframe>'
     else:
         body = f'<img src="{escape(src)}" alt="media">'
     return f'<div class="slide slide-media slide-media-{escape(kind)}">{body}</div>'
@@ -52,6 +56,14 @@ register(
                 type="number",
                 required=False,
                 default="1",
+            ),
+            ConfigField(
+                name="bypass_csp",
+                label="Bypass frame-block headers (X-Frame-Options/CSP) for URL embeds",
+                type="select",
+                options=["no", "yes"],
+                required=False,
+                default="no",
             ),
         ],
         is_available=is_available,

@@ -1,8 +1,12 @@
 import asyncio
 import json
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlparse
 
+import httpx
+from markupsafe import escape
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -37,6 +41,31 @@ async def display(request: Request):
 @app.get("/api/slide/current")
 async def slide_current():
     return await STATE.snapshot()
+
+
+@app.get("/proxy")
+async def proxy(url: str):
+    """Fetch a page server-side and strip framing-blocker headers so it can be
+    embedded in the kiosk's iframe slides. Only the top-level document needs this
+    (frame-ancestors/X-Frame-Options only apply to the framed document itself);
+    sub-resources (css/js/images) are left to load directly from the origin, so
+    we just inject a <base> tag pointing back at the real page URL."""
+    async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
+        resp = await client.get(url)
+
+    content_type = resp.headers.get("content-type", "text/html")
+    if "text/html" not in content_type:
+        return Response(content=resp.content, media_type=content_type)
+
+    final = urlparse(str(resp.url))
+    base_url = f"{final.scheme}://{final.netloc}{final.path.rsplit('/', 1)[0]}/"
+    base_tag = f'<base href="{escape(base_url)}">'
+
+    body = resp.text
+    new_body, count = re.subn(r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag, body, count=1)
+    body = new_body if count else base_tag + body
+
+    return Response(content=body, media_type=content_type)
 
 
 @app.get("/api/preview.png")
