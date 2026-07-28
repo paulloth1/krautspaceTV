@@ -73,6 +73,19 @@ app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 templates = Jinja2Templates(directory=BASE_DIR / "templates")
 
 
+@app.middleware("http")
+async def static_no_cache(request: Request, call_next):
+    # Static files (CSS/JS) had no Cache-Control at all, so browsers fell back
+    # to heuristic caching and could keep serving a stale copy indefinitely
+    # (and independently per http/https origin) after an update. Force
+    # revalidation on every load instead — still fast (ETag/Last-Modified
+    # already set by StaticFiles give a cheap 304), but never silently stale.
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
+
+
 @app.get("/display")
 async def display(request: Request):
     return templates.TemplateResponse(request, "display.html", {})
