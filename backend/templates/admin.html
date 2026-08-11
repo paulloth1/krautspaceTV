@@ -72,12 +72,15 @@
       <h2>Rotation settings</h2>
       <form method="post" action="/admin/settings">
         <div class="form-row">
-          <label for="rotation_interval_seconds">Rotation interval (seconds)</label>
+          <label for="rotation_interval_seconds">
+            Rotation interval (seconds)
+            <span class="field-hint">minimum 20s &mdash; shorter intervals can freeze iframe slides before they finish loading</span>
+          </label>
           <input
             type="number"
             id="rotation_interval_seconds"
             name="rotation_interval_seconds"
-            min="1"
+            min="20"
             value="{{ rotation_interval }}"
             required
           >

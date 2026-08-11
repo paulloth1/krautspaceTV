@@ -317,12 +317,20 @@ async def move_slide(slide_id: int, direction: str = Form(...)):
     return RedirectResponse("/", status_code=303)
 
 
+# display.html waits up to IFRAME_SETTLE_MS (10s) after an iframe's "load"
+# event before swapping it in, on top of however long the page itself takes to
+# load. An interval at or below that leaves iframe slides perpetually
+# superseded by the next poll before they finish settling, so the display
+# never completes a swap and freezes on its "Loading..." placeholder forever.
+MIN_ROTATION_INTERVAL_SECONDS = 20
+
+
 @app.post("/admin/settings")
 async def update_settings(rotation_interval_seconds: str = Form(...)):
     try:
         value = int(rotation_interval_seconds)
     except ValueError:
         value = None
-    if value is not None and value > 0:
+    if value is not None and value >= MIN_ROTATION_INTERVAL_SECONDS:
         await db.set_setting("rotation_interval_seconds", str(value))
     return RedirectResponse("/", status_code=303)
