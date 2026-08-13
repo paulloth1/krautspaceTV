@@ -14,6 +14,23 @@ TAG_RE = re.compile(r"<[^>]+>")
 # atom namespace and <entry>/<title>/<summary|content>. Try RSS first, then
 # fall back to Atom so both feed flavors work without extra config.
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
+DC_NS = "{http://purl.org/dc/elements/1.1/}"
+
+MASTODON_AUTHOR_RE = re.compile(r"/@([^/]+)/")
+
+
+def _guess_author(item, author: str) -> str:
+    if author:
+        return _strip_html(author)
+    # Mastodon (and similar ActivityPub) feeds carry no <author>/<dc:creator>
+    # but their item/entry link is always .../@username/<id> — pull the
+    # username out of that as a fallback so posts aren't left unattributed.
+    for tag in ("link", "guid"):
+        value = item.findtext(tag, "")
+        match = MASTODON_AUTHOR_RE.search(value)
+        if match:
+            return "@" + match.group(1)
+    return ""
 
 
 async def _fetch_text(url: str, timeout: float = 5.0) -> str | None:
@@ -44,7 +61,12 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
     for item in root.iter("item"):
         title = item.findtext("title", "")
         description = item.findtext("description", "")
-        items.append({"title": _strip_html(title), "summary": _strip_html(description)})
+        author = item.findtext("author", "") or item.findtext(f"{DC_NS}creator", "")
+        items.append({
+            "title": _strip_html(title),
+            "summary": _strip_html(description),
+            "author": _guess_author(item, author),
+        })
         if len(items) >= limit:
             return items
 
@@ -55,7 +77,12 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
     for entry in root.iter(f"{ATOM_NS}entry"):
         title = entry.findtext(f"{ATOM_NS}title", "")
         summary = entry.findtext(f"{ATOM_NS}summary") or entry.findtext(f"{ATOM_NS}content") or ""
-        items.append({"title": _strip_html(title), "summary": _strip_html(summary)})
+        author = entry.findtext(f"{ATOM_NS}author/{ATOM_NS}name", "")
+        items.append({
+            "title": _strip_html(title),
+            "summary": _strip_html(summary),
+            "author": _guess_author(entry, author),
+        })
         if len(items) >= limit:
             return items
 
@@ -100,8 +127,9 @@ async def render(config: dict, slide_id: int | None = None) -> str:
             headline, summary = cutoff, summary[len(cutoff):].lstrip()
         if len(summary) > 200:
             summary = summary[:200].rsplit(" ", 1)[0] + "…"
+        author_html = f'<span class="sender">{escape(entry["author"])}</span> ' if entry["author"] else ""
         summary_html = f'<span class="summary">{escape(summary)}</span>' if summary else ""
-        rows.append(f'<li><span class="headline">{escape(headline)}</span>{summary_html}</li>')
+        rows.append(f'<li>{author_html}<span class="headline">{escape(headline)}</span>{summary_html}</li>')
 
     return f'<div class="slide slide-rss"><h2>{escape(title)}</h2><ul class="rss-items">{"".join(rows)}</ul></div>'
 
