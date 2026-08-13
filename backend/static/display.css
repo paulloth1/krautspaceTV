@@ -237,6 +237,25 @@ table.departures td.time {
   border-bottom: none;
 }
 
+.rss-items li.has-image {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5vw;
+}
+
+.rss-thumb {
+  width: 12vw;
+  height: 12vw;
+  object-fit: cover;
+  border-radius: 0.5vw;
+  flex-shrink: 0;
+}
+
+.rss-text {
+  min-width: 0;
+  flex: 1;
+}
+
 .rss-items .sender {
   display: block;
   font-size: 1.8vw;

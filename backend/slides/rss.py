@@ -19,6 +19,7 @@ BLOCK_BREAK_RE = re.compile(r"(?i)</(?:p|li|div|h[1-6])>|<br\s*/?>")
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
 DC_NS = "{http://purl.org/dc/elements/1.1/}"
 CONTENT_NS = "{http://purl.org/rss/1.0/modules/content/}"
+MEDIA_NS = "{http://search.yahoo.com/mrss/}"
 
 MASTODON_AUTHOR_RE = re.compile(r"/@([^/]+)/")
 
@@ -74,6 +75,18 @@ def _html_to_lines(raw_html: str) -> list[str]:
     return [line for line in lines if line]
 
 
+def _first_image_url(item) -> str:
+    # media:content is how Mastodon/ActivityPub-style feeds (and Media RSS in
+    # general) attach post images; grab the first one so it can be shown as a
+    # thumbnail alongside the text.
+    for media in item.findall(f"{MEDIA_NS}content"):
+        media_type = media.get("type", "")
+        url = media.get("url", "")
+        if url and (media_type.startswith("image/") or media.get("medium") == "image"):
+            return url
+    return ""
+
+
 def _pick_headline(title: str, lines: list[str]) -> tuple[str, list[str]]:
     title = title.strip()
     # Some generators (e.g. GoToSocial) truncate <title> to a fixed length
@@ -108,6 +121,7 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
             "title": headline,
             "lines": lines,
             "author": _guess_author(item, author),
+            "image_url": _first_image_url(item),
         })
         if len(items) >= limit:
             return items
@@ -125,6 +139,7 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
             "title": headline,
             "lines": lines,
             "author": _guess_author(entry, author),
+            "image_url": "",
         })
         if len(items) >= limit:
             return items
@@ -159,6 +174,7 @@ async def is_available(config: dict) -> bool:
 async def render(config: dict, slide_id: int | None = None) -> str:
     title = config.get("title") or "RSS feed"
     url = config.get("feed_url", "").strip()
+    show_images = config.get("show_images") == "yes"
     try:
         limit = max(1, int(config.get("item_count") or 5))
     except ValueError:
@@ -181,7 +197,12 @@ async def render(config: dict, slide_id: int | None = None) -> str:
         summary = _join_lines(entry["lines"], summary_budget)
         author_html = f'<span class="sender">{escape(entry["author"])}</span> ' if entry["author"] else ""
         summary_html = f'<span class="summary">{escape(summary)}</span>' if summary else ""
-        rows.append(f'<li>{author_html}<span class="headline">{escape(entry["title"])}</span>{summary_html}</li>')
+        text_html = f'<div class="rss-text">{author_html}<span class="headline">{escape(entry["title"])}</span>{summary_html}</div>'
+        if show_images and entry["image_url"]:
+            image_html = f'<img class="rss-thumb" src="{escape(entry["image_url"])}" loading="lazy" alt="">'
+            rows.append(f'<li class="has-image">{image_html}{text_html}</li>')
+        else:
+            rows.append(f'<li>{text_html}</li>')
 
     return f'<div class="slide slide-rss"><h2>{escape(title)}</h2><ul class="rss-items">{"".join(rows)}</ul></div>'
 
@@ -199,6 +220,14 @@ register(
                 type="number",
                 required=False,
                 default="5",
+            ),
+            ConfigField(
+                name="show_images",
+                label="Show post images (if the feed includes any)",
+                type="select",
+                options=["no", "yes"],
+                required=False,
+                default="no",
             ),
         ],
         is_available=is_available,
