@@ -47,6 +47,19 @@ def _current_boot_id() -> str:
     except OSError:
         return ""
 
+
+async def _forward_to_owner(method: str, path: str, **kwargs) -> httpx.Response | None:
+    """Forward a request to the rotation owner process over loopback HTTP.
+
+    Returns the response, or None if the owner is unreachable (connection
+    error, timeout, etc.) so callers can apply their own fallback.
+    """
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            return await client.request(method, f"{ROTATION_OWNER_URL}{path}", **kwargs)
+    except httpx.HTTPError:
+        return None
+
 # Third-party ad/consent (IAB TCF) vendor scripts known to hang the Pi's weak
 # CPU by synchronously processing hundreds of vendor entries on page load.
 # Strip <script> tags loading from these hosts before handing pages to Chromium.
@@ -118,29 +131,25 @@ async def display(request: Request):
 async def slide_current():
     if IS_ROTATION_OWNER:
         return await STATE.snapshot()
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(f"{ROTATION_OWNER_URL}/api/slide/current")
-            return resp.json()
-    except httpx.HTTPError:
-        return {
-            "id": None,
-            "html": '<div class="slide slide-empty"><h2>Rotation owner unreachable</h2></div>',
-            "forced": False,
-            "seconds_remaining": None,
-        }
+    resp = await _forward_to_owner("GET", "/api/slide/current")
+    if resp is not None:
+        return resp.json()
+    return {
+        "id": None,
+        "html": '<div class="slide slide-empty"><h2>Rotation owner unreachable</h2></div>',
+        "forced": False,
+        "seconds_remaining": None,
+    }
 
 
 @app.get("/api/slide/visible")
 async def slide_visible():
     if IS_ROTATION_OWNER:
         return await STATE.visible_snapshot()
-    try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            resp = await client.get(f"{ROTATION_OWNER_URL}/api/slide/visible")
-            return resp.json()
-    except httpx.HTTPError:
-        return {"id": None, "forced": False}
+    resp = await _forward_to_owner("GET", "/api/slide/visible")
+    if resp is not None:
+        return resp.json()
+    return {"id": None, "forced": False}
 
 
 @app.post("/api/slide/visible")
@@ -148,14 +157,10 @@ async def report_slide_visible(id: int | None = None, forced: bool = False):
     if IS_ROTATION_OWNER:
         await STATE.report_visible(id, forced)
     else:
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                params = {"forced": forced}
-                if id is not None:
-                    params["id"] = id
-                await client.post(f"{ROTATION_OWNER_URL}/api/slide/visible", params=params)
-        except httpx.HTTPError:
-            pass
+        params = {"forced": forced}
+        if id is not None:
+            params["id"] = id
+        await _forward_to_owner("POST", "/api/slide/visible", params=params)
     return {"ok": True}
 
 
@@ -422,11 +427,8 @@ async def view_now(slide_id: int):
     if IS_ROTATION_OWNER:
         await STATE.request_forced(slide_id)
     else:
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                await client.post(f"{ROTATION_OWNER_URL}/admin/slides/{slide_id}/view-now")
-        except httpx.HTTPError:
-            pass  # rotation owner unreachable; still redirect back rather than 500
+        # rotation owner unreachable; still redirect back rather than 500
+        await _forward_to_owner("POST", f"/admin/slides/{slide_id}/view-now")
     return RedirectResponse("/", status_code=303)
 
 
