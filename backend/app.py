@@ -1,10 +1,12 @@
 import asyncio
+import ipaddress
 import json
 import os
 import re
+import socket
 from contextlib import asynccontextmanager
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from markupsafe import escape
@@ -157,6 +159,75 @@ async def report_slide_visible(id: int | None = None, forced: bool = False):
     return {"ok": True}
 
 
+def _resolve_hostname_ips(hostname: str) -> list[ipaddress.IPv4Address | ipaddress.IPv6Address]:
+    """Resolve `hostname` to the IP address(es) it currently points to. A bare
+    IP literal resolves to itself without touching DNS; anything else goes
+    through getaddrinfo (which may return multiple/mixed v4+v6 records)."""
+    try:
+        return [ipaddress.ip_address(hostname)]
+    except ValueError:
+        pass
+    try:
+        infos = socket.getaddrinfo(hostname, None)
+    except socket.gaierror:
+        return []
+    ips = []
+    for info in infos:
+        try:
+            ips.append(ipaddress.ip_address(info[4][0]))
+        except ValueError:
+            continue
+    return ips
+
+
+def _is_internal_address(ip: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def ssrf_check(url: str) -> str | None:
+    """SSRF guard for GET /proxy's untrusted `?url=` param: returns an error
+    message if `url` is unsafe for this server to fetch on a stranger's
+    request, or None if it looks safe.
+
+    The server listens on 0.0.0.0:80/443 with no auth, so anyone on the
+    internet can ask it to fetch an arbitrary URL. Without this check they
+    could use it as an open proxy to probe/reach services on the local LAN
+    (or loopback on the Pi itself) that were never meant to be internet-
+    reachable - e.g. http://192.168.x.x/... or http://127.0.0.1:.../admin.
+    A hostname's DNS can point anywhere (including changing between checks,
+    aka DNS rebinding), so this resolves and checks the actual IP(s) rather
+    than trusting the hostname string. Do NOT remove this thinking it's
+    unnecessary - it's the whole fix for GH issue #16.
+
+    This must only be applied to the raw `url` query-param path. It is
+    intentionally NOT applied when the URL instead comes from a stored
+    slide's config (`slide_id` given) - that's admin-controlled server-side
+    data, not attacker-controlled per-request input, and an admin may
+    legitimately want to embed something on the LAN (e.g. a local device's
+    web UI) in a slide.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        return "URL scheme must be http or https"
+    hostname = parsed.hostname
+    if not hostname:
+        return "Missing hostname"
+    ips = _resolve_hostname_ips(hostname)
+    if not ips:
+        return "Could not resolve hostname"
+    for ip in ips:
+        if _is_internal_address(ip):
+            return "URL resolves to a private/internal address"
+    return None
+
+
 @app.get("/proxy")
 async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
     """Fetch a page server-side and strip framing-blocker headers so it can be
@@ -185,11 +256,38 @@ async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
     if not urlparse(url).scheme:
         return Response(content="Missing or invalid 'url'", status_code=400)
 
+    # SSRF guard: only for the raw `url` param path. `slide_id`-driven URLs
+    # come from trusted, admin-configured slide data, not the request, so
+    # they're deliberately exempt (see ssrf_check's docstring).
+    untrusted_url = slide_id is None
+    if untrusted_url:
+        err = ssrf_check(url)
+        if err:
+            return Response(content=f"Rejected 'url': {err}", status_code=400)
+
     is_finalrewind = urlparse(url).hostname == "dbf.finalrewind.org"
     headers = {"Cookie": cookies} if cookies else {}
     try:
-        async with httpx.AsyncClient(follow_redirects=True, timeout=15) as client:
-            resp = await client.get(url, headers=headers)
+        # We follow redirects manually (rather than httpx's
+        # follow_redirects=True) so that, for the untrusted url-param path,
+        # every redirect hop can be re-checked by ssrf_check too - a public
+        # URL could otherwise redirect straight to an internal address.
+        async with httpx.AsyncClient(follow_redirects=False, timeout=15) as client:
+            current_url = url
+            for _ in range(20):
+                resp = await client.get(current_url, headers=headers)
+                if resp.status_code not in (301, 302, 303, 307, 308):
+                    break
+                location = resp.headers.get("location")
+                if not location:
+                    break
+                current_url = urljoin(current_url, location)
+                if untrusted_url:
+                    err = ssrf_check(current_url)
+                    if err:
+                        return Response(content=f"Rejected redirect: {err}", status_code=400)
+            else:
+                return Response(content="Too many redirects", status_code=502)
     except httpx.HTTPError:
         return Response(content="Upstream fetch failed", status_code=502)
 
