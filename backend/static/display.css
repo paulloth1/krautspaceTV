@@ -206,6 +206,51 @@ table.departures td.time {
   width: 20%;
 }
 
+/* RSS / Atom feed */
+.slide-rss {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.slide-rss h2 {
+  text-align: left;
+}
+
+.rss-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  overflow: hidden;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.rss-items li {
+  padding: 0.8vh 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.rss-items li:last-child {
+  border-bottom: none;
+}
+
+.rss-items .headline {
+  display: block;
+  font-size: 2.6vw;
+  font-weight: 700;
+  color: #ffd27f;
+}
+
+.rss-items .summary {
+  display: block;
+  font-size: 2vw;
+  color: #ccc;
+  margin-top: 0.3vh;
+}
+
 /* API status (e.g. door open/closed) */
 .slide-api-status .api-status-value {
   font-size: 10vw;
