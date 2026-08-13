@@ -102,7 +102,7 @@
       }
 
       function applySlide(data) {
-        if (data.id === lastId) {
+        if (data.id === lastId && data.html === lastHtml) {
           return; // same slide already showing, don't touch the DOM (avoids img/video reload flicker)
         }
         lastId = data.id;
