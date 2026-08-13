@@ -37,13 +37,13 @@ def _guess_author(item, author: str) -> str:
     # Mastodon (and similar ActivityPub) feeds carry no <author>/<dc:creator>
     # but their item/entry link is always https://instance/@username/<id> —
     # pull instance + username out of that as a fallback, giving the full
-    # @username@instance handle rather than just the bare username.
+    # username@instance handle rather than just the bare username.
     for tag in ("link", "guid"):
         value = item.findtext(tag, "")
         match = MASTODON_AUTHOR_RE.search(value)
         if match:
             instance, username = match.groups()
-            return f"@{username}@{instance}"
+            return f"{username}@{instance}"
     return ""
 
 
