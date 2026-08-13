@@ -239,14 +239,14 @@ table.departures td.time {
 
 .rss-items .headline {
   display: block;
-  font-size: 3.2vw;
+  font-size: 2.8vw;
   font-weight: 700;
   color: #ffd27f;
 }
 
 .rss-items .summary {
   display: block;
-  font-size: 2.6vw;
+  font-size: 2.2vw;
   color: #ccc;
   margin-top: 0.5vh;
 }
