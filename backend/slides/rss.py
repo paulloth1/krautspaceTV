@@ -164,13 +164,13 @@ def _join_lines(lines: list[str], budget: int) -> str:
 
 
 async def is_available(config: dict) -> bool:
-    url = config.get("feed_url", "").strip()
-    if not url:
-        return False
-    text = await _fetch_text(url)
-    if text is None:
-        return False
-    return _parse_items(text, 1) is not None
+    # Deliberately no network call here: render() below already fetches the
+    # feed and renders a friendly "Unable to load feed" / "Unable to parse
+    # feed" error state on failure, so doing a full fetch+parse here too
+    # would just double the outbound requests to the feed source on every
+    # rotation step (see issue #17) without adding much real value over this
+    # cheap config check.
+    return bool(config.get("feed_url", "").strip())
 
 
 async def render(config: dict, slide_id: int | None = None) -> str:
