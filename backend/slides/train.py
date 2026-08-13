@@ -1,13 +1,19 @@
 from markupsafe import escape
 
-from ._http import fetch_json, url_ok
+from ._http import fetch_json
 from .registry import ConfigField, SlideType, register
 
 
 async def is_available(config: dict) -> bool:
+    # Deliberately no network call here: render() below already fetches the
+    # departures API and renders a friendly "Unable to load departures"
+    # error state on failure, so doing a second fetch here too would just
+    # double the outbound requests to the API on every rotation step (see
+    # #19, same pattern as #17) without adding much real value over this
+    # cheap config check.
     if not config.get("api_url"):
         return False
-    return await url_ok(config["api_url"])
+    return True
 
 
 async def render(config: dict, slide_id: int | None = None) -> str:
