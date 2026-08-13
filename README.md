@@ -73,8 +73,11 @@ admin UI for managing slides.
 - **Slide types** (`backend/slides/`): pluggable, each with `is_available()`
   and `render()` — `media` (image/video/iframe URL), `webcam` (MJPEG stream
   availability check), `mastodon` (hashtag timeline), `matrix` (room
-  messages), `train` (generic departure-board JSON API). Common HTTP-fetch
-  boilerplate lives in `backend/slides/_http.py`.
+  messages), `train` (generic departure-board JSON API), `api_status` (JSON
+  field read from an API, shown as a true/false label), `rss` (RSS/Atom feed,
+  with Mastodon-tag-RSS-specific quirks like author/image extraction).
+  `render()` fetching is factored through `backend/slides/_http.py`'s shared
+  `fetch_json()` helper for the API-backed types.
 - **Storage**: SQLite via `aiosqlite` (`signage.db`, gitignored, WAL mode) —
   slides and settings only; no secrets belong in git.
 - **Kiosk display**: X11 (no window manager) + Chromium in `--kiosk` mode
