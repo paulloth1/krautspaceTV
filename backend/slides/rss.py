@@ -21,7 +21,7 @@ DC_NS = "{http://purl.org/dc/elements/1.1/}"
 CONTENT_NS = "{http://purl.org/rss/1.0/modules/content/}"
 MEDIA_NS = "{http://search.yahoo.com/mrss/}"
 
-MASTODON_AUTHOR_RE = re.compile(r"/@([^/]+)/")
+MASTODON_AUTHOR_RE = re.compile(r"https?://([^/]+)/@([^/]+)/")
 
 
 RSS_AUTHOR_EMAIL_RE = re.compile(r"^\S+@\S+\s*\((.+)\)$")
@@ -35,13 +35,15 @@ def _guess_author(item, author: str) -> str:
         match = RSS_AUTHOR_EMAIL_RE.match(author)
         return match.group(1) if match else author
     # Mastodon (and similar ActivityPub) feeds carry no <author>/<dc:creator>
-    # but their item/entry link is always .../@username/<id> — pull the
-    # username out of that as a fallback so posts aren't left unattributed.
+    # but their item/entry link is always https://instance/@username/<id> —
+    # pull instance + username out of that as a fallback, giving the full
+    # @username@instance handle rather than just the bare username.
     for tag in ("link", "guid"):
         value = item.findtext(tag, "")
         match = MASTODON_AUTHOR_RE.search(value)
         if match:
-            return "@" + match.group(1)
+            instance, username = match.groups()
+            return f"@{username}@{instance}"
     return ""
 
 
