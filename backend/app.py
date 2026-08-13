@@ -29,6 +29,22 @@ BASE_DIR = Path(__file__).parent
 IS_ROTATION_OWNER = os.environ.get("SIGNAGE_ROTATION_OWNER") == "1"
 ROTATION_OWNER_URL = os.environ.get("SIGNAGE_ROTATION_OWNER_URL", "http://127.0.0.1:8081")
 
+# Rotation interval should reset to 60s on every actual Pi reboot, but survive
+# service restarts within the same boot (e.g. redeploys) so an admin change
+# isn't silently undone mid-session. The kernel hands out a fresh random
+# boot_id on every boot (and never changes it for the life of that boot), so
+# comparing it against the last one we saw (stored in our own settings table)
+# distinguishes "first owner startup this boot" from "just restarted" without
+# needing write access to anything outside the sqlite DB we already use.
+BOOT_ID_PATH = Path("/proc/sys/kernel/random/boot_id")
+
+
+def _current_boot_id() -> str:
+    try:
+        return BOOT_ID_PATH.read_text().strip()
+    except OSError:
+        return ""
+
 # Third-party ad/consent (IAB TCF) vendor scripts known to hang the Pi's weak
 # CPU by synchronously processing hundreds of vendor entries on page load.
 # Strip <script> tags loading from these hosts before handing pages to Chromium.
@@ -62,6 +78,11 @@ COOKIE_BANNER_CSS = """
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init_db()
+    if IS_ROTATION_OWNER:
+        boot_id = _current_boot_id()
+        if boot_id and boot_id != await db.get_setting("last_boot_id"):
+            await db.set_setting("rotation_interval_seconds", "60")
+            await db.set_setting("last_boot_id", boot_id)
     task = asyncio.create_task(rotation_loop()) if IS_ROTATION_OWNER else None
     yield
     if task:
