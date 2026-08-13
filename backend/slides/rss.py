@@ -9,12 +9,14 @@ from markupsafe import escape
 from .registry import ConfigField, SlideType, register
 
 TAG_RE = re.compile(r"<[^>]+>")
+MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 
 # RSS 2.0 uses unprefixed <item>/<title>/<description> tags; Atom uses the
 # atom namespace and <entry>/<title>/<summary|content>. Try RSS first, then
 # fall back to Atom so both feed flavors work without extra config.
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
 DC_NS = "{http://purl.org/dc/elements/1.1/}"
+CONTENT_NS = "{http://purl.org/rss/1.0/modules/content/}"
 
 MASTODON_AUTHOR_RE = re.compile(r"/@([^/]+)/")
 
@@ -46,6 +48,7 @@ async def _fetch_text(url: str, timeout: float = 5.0) -> str | None:
 def _strip_html(text: str) -> str:
     text = TAG_RE.sub(" ", text or "")
     text = html.unescape(text)
+    text = MD_BOLD_RE.sub(r"\1", text)
     return " ".join(text.split())
 
 
@@ -60,7 +63,10 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
     # RSS 2.0 / RDF: <item> with plain <title>/<description>
     for item in root.iter("item"):
         title = item.findtext("title", "")
-        description = item.findtext("description", "")
+        # content:encoded (full post body) is preferred over <description>,
+        # which some generators (e.g. GoToSocial) wrap in boilerplate like
+        # "X made a new post: ..." instead of just the post text.
+        description = item.findtext(f"{CONTENT_NS}encoded") or item.findtext("description", "")
         author = item.findtext("author", "") or item.findtext(f"{DC_NS}creator", "")
         items.append({
             "title": _strip_html(title),
