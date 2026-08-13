@@ -121,6 +121,10 @@ async def render(config: dict, slide_id: int | None = None) -> str:
     if not items:
         return f'<div class="slide slide-rss"><h2>{escape(title)}</h2><p>Unable to parse feed.</p></div>'
 
+    # More items on screen at once means less room for each one's body text
+    # before it starts pushing later items off the bottom of the slide.
+    summary_budget = max(200, 900 // len(items))
+
     rows = []
     for entry in items:
         headline = entry["title"]
@@ -131,8 +135,8 @@ async def render(config: dict, slide_id: int | None = None) -> str:
             # that as the headline instead of leaving it blank.
             cutoff = summary[:80].rsplit(" ", 1)[0] or summary[:80]
             headline, summary = cutoff, summary[len(cutoff):].lstrip()
-        if len(summary) > 200:
-            summary = summary[:200].rsplit(" ", 1)[0] + "…"
+        if len(summary) > summary_budget:
+            summary = summary[:summary_budget].rsplit(" ", 1)[0] + "…"
         author_html = f'<span class="sender">{escape(entry["author"])}</span> ' if entry["author"] else ""
         summary_html = f'<span class="summary">{escape(summary)}</span>' if summary else ""
         rows.append(f'<li>{author_html}<span class="headline">{escape(headline)}</span>{summary_html}</li>')
