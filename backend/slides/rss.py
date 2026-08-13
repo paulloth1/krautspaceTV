@@ -90,11 +90,18 @@ async def render(config: dict, slide_id: int | None = None) -> str:
 
     rows = []
     for entry in items:
+        headline = entry["title"]
         summary = entry["summary"]
+        if not headline:
+            # Some feeds (e.g. Mastodon tag RSS) omit <title> entirely and
+            # only carry the post body in <description> — use the start of
+            # that as the headline instead of leaving it blank.
+            cutoff = summary[:80].rsplit(" ", 1)[0] or summary[:80]
+            headline, summary = cutoff, summary[len(cutoff):].lstrip()
         if len(summary) > 200:
             summary = summary[:200].rsplit(" ", 1)[0] + "…"
         summary_html = f'<span class="summary">{escape(summary)}</span>' if summary else ""
-        rows.append(f'<li><span class="headline">{escape(entry["title"])}</span>{summary_html}</li>')
+        rows.append(f'<li><span class="headline">{escape(headline)}</span>{summary_html}</li>')
 
     return f'<div class="slide slide-rss"><h2>{escape(title)}</h2><ul class="rss-items">{"".join(rows)}</ul></div>'
 
