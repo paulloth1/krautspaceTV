@@ -10,6 +10,8 @@ from .registry import ConfigField, SlideType, register
 
 TAG_RE = re.compile(r"<[^>]+>")
 MD_BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
+LIST_ITEM_RE = re.compile(r"(?i)<li[^>]*>")
+BLOCK_BREAK_RE = re.compile(r"(?i)</(?:p|li|div|h[1-6])>|<br\s*/?>")
 
 # RSS 2.0 uses unprefixed <item>/<title>/<description> tags; Atom uses the
 # atom namespace and <entry>/<title>/<summary|content>. Try RSS first, then
@@ -21,9 +23,16 @@ CONTENT_NS = "{http://purl.org/rss/1.0/modules/content/}"
 MASTODON_AUTHOR_RE = re.compile(r"/@([^/]+)/")
 
 
+RSS_AUTHOR_EMAIL_RE = re.compile(r"^\S+@\S+\s*\((.+)\)$")
+
+
 def _guess_author(item, author: str) -> str:
     if author:
-        return _strip_html(author)
+        author = _strip_html(author)
+        # RSS 2.0's <author> is "email (Display Name)" per spec — the email
+        # itself isn't useful on a TV, so show just the display name.
+        match = RSS_AUTHOR_EMAIL_RE.match(author)
+        return match.group(1) if match else author
     # Mastodon (and similar ActivityPub) feeds carry no <author>/<dc:creator>
     # but their item/entry link is always .../@username/<id> — pull the
     # username out of that as a fallback so posts aren't left unattributed.
@@ -52,6 +61,32 @@ def _strip_html(text: str) -> str:
     return " ".join(text.split())
 
 
+def _html_to_lines(raw_html: str) -> list[str]:
+    """Turn a fragment of post-body HTML into plain-text lines, treating
+    <p>/<li>/<div>/<br> as line breaks instead of collapsing everything
+    (as _strip_html does) into one run-on line."""
+    text = LIST_ITEM_RE.sub("\n• ", raw_html or "")
+    text = BLOCK_BREAK_RE.sub("\n", text)
+    text = TAG_RE.sub("", text)
+    text = html.unescape(text)
+    text = MD_BOLD_RE.sub(r"\1", text)
+    lines = (" ".join(line.split()) for line in text.split("\n"))
+    return [line for line in lines if line]
+
+
+def _pick_headline(title: str, lines: list[str]) -> tuple[str, list[str]]:
+    title = title.strip()
+    # Some generators (e.g. GoToSocial) truncate <title> to a fixed length
+    # and mark it with a trailing ellipsis, while still providing the full,
+    # untruncated text in the body — prefer that over a cut-off title.
+    truncated = title.endswith("...") or title.endswith("…")
+    if title and not truncated:
+        return title, lines
+    if lines:
+        return lines[0], lines[1:]
+    return title, lines
+
+
 def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
     try:
         root = ElementTree.fromstring(xml_text)
@@ -68,9 +103,10 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
         # "X made a new post: ..." instead of just the post text.
         description = item.findtext(f"{CONTENT_NS}encoded") or item.findtext("description", "")
         author = item.findtext("author", "") or item.findtext(f"{DC_NS}creator", "")
+        headline, lines = _pick_headline(_strip_html(title), _html_to_lines(description))
         items.append({
-            "title": _strip_html(title),
-            "summary": _strip_html(description),
+            "title": headline,
+            "lines": lines,
             "author": _guess_author(item, author),
         })
         if len(items) >= limit:
@@ -84,15 +120,30 @@ def _parse_items(xml_text: str, limit: int) -> list[dict] | None:
         title = entry.findtext(f"{ATOM_NS}title", "")
         summary = entry.findtext(f"{ATOM_NS}summary") or entry.findtext(f"{ATOM_NS}content") or ""
         author = entry.findtext(f"{ATOM_NS}author/{ATOM_NS}name", "")
+        headline, lines = _pick_headline(_strip_html(title), _html_to_lines(summary))
         items.append({
-            "title": _strip_html(title),
-            "summary": _strip_html(summary),
+            "title": headline,
+            "lines": lines,
             "author": _guess_author(entry, author),
         })
         if len(items) >= limit:
             return items
 
     return items
+
+
+def _join_lines(lines: list[str], budget: int) -> str:
+    out = []
+    used = 0
+    for line in lines:
+        if used + len(line) > budget:
+            remaining = budget - used
+            if remaining > 20:
+                out.append(line[:remaining].rsplit(" ", 1)[0] + "…")
+            break
+        out.append(line)
+        used += len(line)
+    return "\n".join(out)
 
 
 async def is_available(config: dict) -> bool:
@@ -127,19 +178,10 @@ async def render(config: dict, slide_id: int | None = None) -> str:
 
     rows = []
     for entry in items:
-        headline = entry["title"]
-        summary = entry["summary"]
-        if not headline:
-            # Some feeds (e.g. Mastodon tag RSS) omit <title> entirely and
-            # only carry the post body in <description> — use the start of
-            # that as the headline instead of leaving it blank.
-            cutoff = summary[:80].rsplit(" ", 1)[0] or summary[:80]
-            headline, summary = cutoff, summary[len(cutoff):].lstrip()
-        if len(summary) > summary_budget:
-            summary = summary[:summary_budget].rsplit(" ", 1)[0] + "…"
+        summary = _join_lines(entry["lines"], summary_budget)
         author_html = f'<span class="sender">{escape(entry["author"])}</span> ' if entry["author"] else ""
         summary_html = f'<span class="summary">{escape(summary)}</span>' if summary else ""
-        rows.append(f'<li>{author_html}<span class="headline">{escape(headline)}</span>{summary_html}</li>')
+        rows.append(f'<li>{author_html}<span class="headline">{escape(entry["title"])}</span>{summary_html}</li>')
 
     return f'<div class="slide slide-rss"><h2>{escape(title)}</h2><ul class="rss-items">{"".join(rows)}</ul></div>'
 
