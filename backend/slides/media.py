@@ -38,15 +38,17 @@ async def render(config: dict, slide_id: int | None = None) -> str:
                 iframe_src += f"&cookies={quote(cookies, safe='')}"
         else:
             iframe_src = src
+        no_reset = str(config.get("no_reset") or "").lower() in ("1", "true", "yes", "on")
+        no_reset_attr = " data-no-reset" if no_reset else ""
         if scale != 1:
             inv = 100 / scale
             style = (
                 f"width:{inv}%;height:{inv}%;border:none;overflow:hidden;"
                 f"transform:scale({scale});transform-origin:top left;"
             )
-            body = f'<iframe src="{escape(iframe_src)}" style="{style}"></iframe>'
+            body = f'<iframe src="{escape(iframe_src)}" style="{style}"{no_reset_attr}></iframe>'
         else:
-            body = f'<iframe src="{escape(iframe_src)}" style="overflow:hidden;"></iframe>'
+            body = f'<iframe src="{escape(iframe_src)}" style="overflow:hidden;"{no_reset_attr}></iframe>'
     else:
         body = f'<img src="{escape(src)}" alt="media">'
     return f'<div class="slide slide-media slide-media-{escape(kind)}">{body}</div>'
@@ -83,6 +85,17 @@ register(
                 "so it isn't re-shown (and its heavy consent JS isn't re-run) on every load",
                 type="textarea",
                 required=False,
+            ),
+            ConfigField(
+                name="no_reset",
+                label="Skip periodic iframe reset (for URL embeds) — the display normally reloads iframes "
+                "every 30s to fix scroll drift on embeds it can't control directly; turn this on for an "
+                "embed whose own load/login flow takes longer than that, so it isn't perpetually restarted "
+                "before it finishes",
+                type="select",
+                options=["no", "yes"],
+                required=False,
+                default="no",
             ),
         ],
         is_available=is_available,
