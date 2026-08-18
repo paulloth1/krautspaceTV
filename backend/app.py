@@ -89,6 +89,37 @@ COOKIE_BANNER_CSS = """
 </style>
 """
 
+# kraut.space/chat/ (the Candy XMPP webchat client) connects anonymously but
+# still prompts for a nickname via a #login-form before it'll join the room -
+# there's no one at the kiosk to type one in, so auto-fill and submit that
+# form (and any "nickname already taken" #nickname-conflict-form retry) with
+# a fixed nickname via injected JS instead. Candy already loads jQuery, which
+# this relies on being present by the time the script runs (placed at the end
+# of body, after Candy's own scripts).
+KRAUT_CHAT_NICKNAME = "krautspaceTV"
+CANDY_AUTOJOIN_SCRIPT = f"""
+<script>
+(function() {{
+  var NICKNAME = {json.dumps(KRAUT_CHAT_NICKNAME)};
+  function trySubmit() {{
+    if (typeof jQuery === 'undefined') return;
+    var $login = jQuery('#login-form');
+    if ($login.length) {{
+      jQuery('#username').val(NICKNAME);
+      $login.trigger('submit');
+      return;
+    }}
+    var $conflict = jQuery('#nickname-conflict-form');
+    if ($conflict.length) {{
+      jQuery('#nickname').val(NICKNAME + '-' + Math.floor(Math.random() * 1000));
+      $conflict.trigger('submit');
+    }}
+  }}
+  setInterval(trySubmit, 500);
+}})();
+</script>
+"""
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -270,7 +301,9 @@ async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
         if err:
             return Response(content=f"Rejected 'url': {err}", status_code=400)
 
-    is_finalrewind = urlparse(url).hostname == "dbf.finalrewind.org"
+    parsed_url = urlparse(url)
+    is_finalrewind = parsed_url.hostname == "dbf.finalrewind.org"
+    is_kraut_chat = parsed_url.hostname == "kraut.space" and parsed_url.path.rstrip("/") == "/chat"
     headers = {"Cookie": cookies} if cookies else {}
     try:
         # We follow redirects manually (rather than httpx's
@@ -321,6 +354,10 @@ async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
         r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag + COOKIE_BANNER_CSS, body, count=1
     )
     body = new_body if count else base_tag + COOKIE_BANNER_CSS + body
+
+    if is_kraut_chat:
+        new_body, count = re.subn(r"(?i)</body>", lambda m: CANDY_AUTOJOIN_SCRIPT + m.group(0), body, count=1)
+        body = new_body if count else body + CANDY_AUTOJOIN_SCRIPT
 
     return Response(content=body, media_type=content_type)
 
