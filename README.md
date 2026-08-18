@@ -38,8 +38,31 @@ admin UI for managing slides.
   consent on every load. It's looked up server-side via the slide's id
   (`/proxy?slide_id=...`) rather than appearing in the iframe's URL.
 - The dark-theme/script-stripping rewrites above only apply to
-  `dbf.finalrewind.org`; `/proxy` otherwise passes pages through with just
-  the generic ad-script stripping and cookie-banner hiding.
+  `dbf.finalrewind.org`; kraut.space's own XMPP webchat (`/chat/`) gets its
+  own rewrites instead (auto-filling its nickname prompt, trimming it down
+  to just the message list, and dark-theming it) — `/proxy` otherwise passes
+  pages through with just the generic ad-script stripping and cookie-banner
+  hiding.
+- `no_reset: yes` opts an iframe out of the display's periodic 30s reload
+  (normally there to fix scroll drift on embeds it can't control directly).
+  Needed for embeds whose own load/login flow takes longer than that to
+  finish — the periodic reset would otherwise restart them before they ever
+  get there. Used by the kraut.space chat slide, since its XMPP handshake
+  can take longer than 30s on the Pi's weak CPU.
+
+## Printer status overlay
+
+- If a "3D printer host" is set in "Rotation settings", the display polls a
+  Creality K1-family printer's local status websocket (`ws://<host>:9999`)
+  every 15s and shows a small "Printing: ..." bar in a corner, on top of
+  whatever slide is currently showing — independent of slide rotation, and
+  only visible while a print is actually running. Leave the field blank to
+  disable it.
+- This talks to Creality's own websocket protocol (not Moonraker, despite
+  the K1C's Klipper-based firmware); field/state-code meanings come from the
+  community-reverse-engineered
+  [ha-creality-lan](https://github.com/rathlinus/ha-creality-lan) Home
+  Assistant integration.
 
 ## Known limitations
 
