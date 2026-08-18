@@ -10,6 +10,11 @@ def test_clean_filename_handles_short_names_without_suffix():
     assert _clean_filename("test.gcode") == "test"
 
 
+def test_clean_filename_handles_sub_hour_time_suffix():
+    # printLeftTime under an hour omits the "h" component (e.g. "6m24s" not "0h6m24s")
+    assert _clean_filename("thing.stl_PLA_6m24s.gcode") == "thing"
+
+
 def test_clean_filename_none_and_empty():
     assert _clean_filename(None) is None
     assert _clean_filename("") is None

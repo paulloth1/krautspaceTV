@@ -23,7 +23,7 @@ import websockets
 # overlay; idle/complete/failed/etc should leave the display alone.
 ACTIVE_STATES = {1, 5, 6}
 
-_TIME_SUFFIX_RE = re.compile(r"_[A-Za-z]+_\d+h\d+m\d+s$")
+_TIME_SUFFIX_RE = re.compile(r"_[A-Za-z]+_(?:\d+h)?(?:\d+m)?\d+s$")
 
 
 def _clean_filename(raw: str | None) -> str | None:
@@ -61,6 +61,8 @@ async def get_printer_status(host: str, timeout: float = 3.0) -> dict | None:
     try:
         data = json.loads(raw)
     except ValueError:
+        return None
+    if not isinstance(data, dict):
         return None
 
     state = data.get("state")
