@@ -120,6 +120,23 @@ CANDY_AUTOJOIN_SCRIPT = f"""
 </script>
 """
 
+# The kiosk wants the message list only, not Candy's full multi-room chat UI
+# (room tabs, user roster sidebar, the message-compose box - nobody's typing
+# from the TV). #chat-tabs/.roster-pane/.message-form-wrapper's own CSS
+# (res/default.css) reserves space for them via margins on
+# .message-pane-wrapper, so hiding them alone would leave that space blank -
+# zero the margin out too so the message list fills the screen.
+CANDY_TRIM_CSS = """
+<style>
+#chat-tabs, .roster-pane, .message-form-wrapper, #mobile-roster-icon, #chat-toolbar {
+  display: none !important;
+}
+.message-pane-wrapper {
+  margin: 0 !important;
+}
+</style>
+"""
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -350,10 +367,9 @@ async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
             lambda m: "" if "prefers-color-scheme" in m.group(1) else m.group(0), body
         )
 
-    new_body, count = re.subn(
-        r"(?i)<head[^>]*>", lambda m: m.group(0) + base_tag + COOKIE_BANNER_CSS, body, count=1
-    )
-    body = new_body if count else base_tag + COOKIE_BANNER_CSS + body
+    head_extras = base_tag + COOKIE_BANNER_CSS + (CANDY_TRIM_CSS if is_kraut_chat else "")
+    new_body, count = re.subn(r"(?i)<head[^>]*>", lambda m: m.group(0) + head_extras, body, count=1)
+    body = new_body if count else head_extras + body
 
     if is_kraut_chat:
         new_body, count = re.subn(r"(?i)</body>", lambda m: CANDY_AUTOJOIN_SCRIPT + m.group(0), body, count=1)
