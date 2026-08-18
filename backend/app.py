@@ -96,21 +96,21 @@ COOKIE_BANNER_CSS = """
 # on being present by the time the script runs (placed at the end of body,
 # after Candy's own scripts).
 #
-# The nickname is randomized per page load rather than fixed: the kiosk's
-# iframe gets discarded outright on every slide rotation/reload with no XMPP
-# "leave" sent, so the room still holds the old nickname as a ghost occupant
-# for a few minutes afterwards (BOSH inactivity timeout) - reconnecting with
-# the same fixed nickname within that window gets rejected by the room with
-# a MUC <conflict/> presence error, which Candy has no automatic recovery
-# from (it just shows another #nickname-conflict-form and waits). A fresh
-# random suffix on every load sidesteps that collision instead of chasing it
-# after the fact; the #nickname-conflict-form retry below is kept as a
-# backup for the rare case two loads pick the same suffix.
-KRAUT_CHAT_NICKNAME_PREFIX = "krautspaceTV"
+# The kiosk's iframe gets discarded outright on every slide rotation/reload
+# with no XMPP "leave" sent, so the room briefly still holds the old
+# nickname as a ghost occupant afterwards (BOSH inactivity timeout, a few
+# minutes) - reconnecting with the same nickname inside that window gets
+# rejected by the room with a MUC <conflict/> presence error, which Candy
+# has no automatic recovery from (it just shows another
+# #nickname-conflict-form and waits). In normal rotation this fixed name
+# reconnects rarely enough that the ghost has already timed out, so it stays
+# recognizable in the room's user list; the retry below only appends a
+# random suffix on an actual conflict, as a fallback rather than the norm.
+KRAUT_CHAT_NICKNAME = "krautspaceTV"
 CANDY_AUTOJOIN_SCRIPT = f"""
 <script>
 (function() {{
-  var NICKNAME = {json.dumps(KRAUT_CHAT_NICKNAME_PREFIX)} + '-' + Math.floor(Math.random() * 100000);
+  var NICKNAME = {json.dumps(KRAUT_CHAT_NICKNAME)};
   function trySubmit() {{
     if (typeof jQuery === 'undefined') return;
     var $login = jQuery('#login-form');
