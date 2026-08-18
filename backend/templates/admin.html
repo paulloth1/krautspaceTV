@@ -85,6 +85,19 @@
             required
           >
         </div>
+        <div class="form-row">
+          <label for="printer_host">
+            3D printer host (IP or hostname)
+            <span class="field-hint">Creality K1-family printer on the local network &mdash; shows a small "printing" overlay on the display while it's running. Leave blank to disable.</span>
+          </label>
+          <input
+            type="text"
+            id="printer_host"
+            name="printer_host"
+            value="{{ printer_host }}"
+            placeholder="192.168.1.50"
+          >
+        </div>
         <button type="submit">Save settings</button>
       </form>
     </section>

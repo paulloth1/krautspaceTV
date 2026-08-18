@@ -17,6 +17,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import db, system_info
 from .preview import get_preview_png
+from .printer import get_printer_status
 from .rotation import STATE, rotation_loop
 from .slides import REGISTRY
 
@@ -421,6 +422,17 @@ async def system_status():
     return await system_info.get_stats()
 
 
+@app.get("/api/printer/status")
+async def printer_status():
+    """Polled by the display's printer overlay (see display.html). Returns
+    {"printing": false} with no other fields if there's no printer host
+    configured or it's unreachable, rather than an error - the overlay just
+    stays hidden in that case."""
+    host = await db.get_setting("printer_host", "")
+    status = await get_printer_status(host)
+    return status or {"printing": False}
+
+
 @app.get("/api/preview.png")
 async def preview_png():
     data = await get_preview_png()
@@ -433,6 +445,7 @@ async def preview_png():
 async def admin(request: Request):
     slides = await db.list_slides()
     interval = await db.get_setting("rotation_interval_seconds", "60")
+    printer_host = await db.get_setting("printer_host", "")
     slide_names = {slide["id"]: slide["name"] for slide in slides}
     return templates.TemplateResponse(
         request,
@@ -441,6 +454,7 @@ async def admin(request: Request):
             "slides": slides,
             "registry": REGISTRY,
             "rotation_interval": interval,
+            "printer_host": printer_host,
             "slide_names_json": json.dumps(slide_names),
         },
     )
@@ -538,11 +552,12 @@ MIN_ROTATION_INTERVAL_SECONDS = 20
 
 
 @app.post("/admin/settings")
-async def update_settings(rotation_interval_seconds: str = Form(...)):
+async def update_settings(rotation_interval_seconds: str = Form(...), printer_host: str = Form("")):
     try:
         value = int(rotation_interval_seconds)
     except ValueError:
         value = None
     if value is not None and value >= MIN_ROTATION_INTERVAL_SECONDS:
         await db.set_setting("rotation_interval_seconds", str(value))
+    await db.set_setting("printer_host", printer_host.strip())
     return RedirectResponse("/", status_code=303)

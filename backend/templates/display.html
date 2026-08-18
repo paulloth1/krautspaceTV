@@ -11,6 +11,7 @@
     <div id="slide-a" class="slide-buffer visible"><div class="slide slide-empty"><h2>Loading&hellip;</h2></div></div>
     <div id="slide-b" class="slide-buffer"></div>
   </div>
+  <div id="printer-overlay" class="printer-overlay"></div>
 
   <script>
     (function () {
@@ -132,6 +133,46 @@
 
       poll();
       setInterval(poll, POLL_MS);
+
+      // Printer overlay: independent of slide rotation, drawn on top of
+      // whatever slide is currently showing, and only visible while the
+      // printer actually has a job running (see backend/printer.py).
+      var PRINTER_POLL_MS = 15000;
+      var printerOverlay = document.getElementById("printer-overlay");
+
+      function formatLeftTime(seconds) {
+        if (!seconds || seconds <= 0) return null;
+        var h = Math.floor(seconds / 3600);
+        var m = Math.round((seconds % 3600) / 60);
+        return h > 0 ? h + "h " + m + "m left" : m + "m left";
+      }
+
+      function pollPrinter() {
+        fetch("/api/printer/status", { cache: "no-store" })
+          .then(function (resp) {
+            if (!resp.ok) throw new Error("bad response");
+            return resp.json();
+          })
+          .then(function (data) {
+            if (!data || !data.printing) {
+              printerOverlay.classList.remove("visible");
+              return;
+            }
+            var parts = [];
+            if (data.file) parts.push(data.file);
+            if (typeof data.progress === "number") parts.push(data.progress + "%");
+            var left = formatLeftTime(data.left_time);
+            if (left) parts.push(left);
+            printerOverlay.textContent = "Printing: " + (parts.join(" · ") || "in progress");
+            printerOverlay.classList.add("visible");
+          })
+          .catch(function () {
+            printerOverlay.classList.remove("visible");
+          });
+      }
+
+      pollPrinter();
+      setInterval(pollPrinter, PRINTER_POLL_MS);
     })();
   </script>
 </body>

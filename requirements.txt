@@ -5,3 +5,4 @@ httpx==0.28.1
 python-multipart==0.0.32
 aiosqlite==0.22.1
 defusedxml==0.7.1
+websockets==15.0.1

@@ -318,3 +318,25 @@ table.departures td.time {
   height: 100%;
   border: none;
 }
+
+/* Printer overlay: drawn on top of whatever slide is showing, independent
+   of rotation (see display.html's pollPrinter). Kept small/unobtrusive. */
+.printer-overlay {
+  position: absolute;
+  right: 1.5vw;
+  bottom: 1.5vh;
+  z-index: 10;
+  padding: 0.6vh 1.2vw;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5vw;
+  color: #fff;
+  font-size: 1.4vw;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 1s ease;
+}
+
+.printer-overlay.visible {
+  opacity: 1;
+}
