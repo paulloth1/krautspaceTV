@@ -92,15 +92,25 @@ COOKIE_BANNER_CSS = """
 # kraut.space/chat/ (the Candy XMPP webchat client) connects anonymously but
 # still prompts for a nickname via a #login-form before it'll join the room -
 # there's no one at the kiosk to type one in, so auto-fill and submit that
-# form (and any "nickname already taken" #nickname-conflict-form retry) with
-# a fixed nickname via injected JS instead. Candy already loads jQuery, which
-# this relies on being present by the time the script runs (placed at the end
-# of body, after Candy's own scripts).
-KRAUT_CHAT_NICKNAME = "krautspaceTV"
+# form via injected JS instead. Candy already loads jQuery, which this relies
+# on being present by the time the script runs (placed at the end of body,
+# after Candy's own scripts).
+#
+# The nickname is randomized per page load rather than fixed: the kiosk's
+# iframe gets discarded outright on every slide rotation/reload with no XMPP
+# "leave" sent, so the room still holds the old nickname as a ghost occupant
+# for a few minutes afterwards (BOSH inactivity timeout) - reconnecting with
+# the same fixed nickname within that window gets rejected by the room with
+# a MUC <conflict/> presence error, which Candy has no automatic recovery
+# from (it just shows another #nickname-conflict-form and waits). A fresh
+# random suffix on every load sidesteps that collision instead of chasing it
+# after the fact; the #nickname-conflict-form retry below is kept as a
+# backup for the rare case two loads pick the same suffix.
+KRAUT_CHAT_NICKNAME_PREFIX = "krautspaceTV"
 CANDY_AUTOJOIN_SCRIPT = f"""
 <script>
 (function() {{
-  var NICKNAME = {json.dumps(KRAUT_CHAT_NICKNAME)};
+  var NICKNAME = {json.dumps(KRAUT_CHAT_NICKNAME_PREFIX)} + '-' + Math.floor(Math.random() * 100000);
   function trySubmit() {{
     if (typeof jQuery === 'undefined') return;
     var $login = jQuery('#login-form');
