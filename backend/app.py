@@ -147,6 +147,34 @@ CANDY_TRIM_CSS = """
 </style>
 """
 
+# Candy's default theme (res/default.css) is a light #eee message pane with
+# black text - every other slide on the kiosk is dark, so this stands out.
+# Overriding just the handful of rules that set the light background/text.
+CANDY_DARK_CSS = """
+<style>
+.message-pane-wrapper {
+  background-color: #111 !important;
+  color: #ddd !important;
+}
+.message-pane li {
+  border-bottom: 1px solid #333 !important;
+  box-shadow: 0 1px 0 0 #000 !important;
+}
+.message-pane .label {
+  color: #7fd4ff !important;
+}
+.message-pane div > a {
+  color: #7fb8f5 !important;
+}
+.message-pane .adminmessage {
+  color: #e88 !important;
+}
+.message-pane .infomessage {
+  color: #999 !important;
+}
+</style>
+"""
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -377,7 +405,7 @@ async def proxy(url: str = "", cookies: str = "", slide_id: int | None = None):
             lambda m: "" if "prefers-color-scheme" in m.group(1) else m.group(0), body
         )
 
-    head_extras = base_tag + COOKIE_BANNER_CSS + (CANDY_TRIM_CSS if is_kraut_chat else "")
+    head_extras = base_tag + COOKIE_BANNER_CSS + (CANDY_TRIM_CSS + CANDY_DARK_CSS if is_kraut_chat else "")
     new_body, count = re.subn(r"(?i)<head[^>]*>", lambda m: m.group(0) + head_extras, body, count=1)
     body = new_body if count else head_extras + body
 
