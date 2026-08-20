@@ -11,7 +11,10 @@
     <div id="slide-a" class="slide-buffer visible"><div class="slide slide-empty"><h2>Loading&hellip;</h2></div></div>
     <div id="slide-b" class="slide-buffer"></div>
   </div>
-  <div id="printer-overlay" class="printer-overlay"></div>
+  <div id="printer-overlay" class="printer-overlay">
+    <span id="printer-overlay-text"></span>
+    <div id="printer-overlay-bar" class="printer-overlay-bar"><div id="printer-overlay-bar-fill" class="printer-overlay-bar-fill"></div></div>
+  </div>
 
   <script>
     (function () {
@@ -139,6 +142,8 @@
       // printer actually has a job running (see backend/printer.py).
       var PRINTER_POLL_MS = 15000;
       var printerOverlay = document.getElementById("printer-overlay");
+      var printerOverlayText = document.getElementById("printer-overlay-text");
+      var printerOverlayBarFill = document.getElementById("printer-overlay-bar-fill");
 
       function formatLeftTime(seconds) {
         if (!seconds || seconds <= 0) return null;
@@ -163,7 +168,8 @@
             if (typeof data.progress === "number") parts.push(data.progress + "%");
             var left = formatLeftTime(data.left_time);
             if (left) parts.push(left);
-            printerOverlay.textContent = "Printing: " + (parts.join(" · ") || "in progress");
+            printerOverlayText.textContent = "Printing: " + (parts.join(" · ") || "in progress");
+            printerOverlayBarFill.style.width = (typeof data.progress === "number" ? data.progress : 0) + "%";
             printerOverlay.classList.add("visible");
           })
           .catch(function () {

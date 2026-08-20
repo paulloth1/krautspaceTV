@@ -326,7 +326,7 @@ table.departures td.time {
   right: 1.5vw;
   bottom: 1.5vh;
   z-index: 10;
-  padding: 0.6vh 1.2vw;
+  padding: 0.6vh 1.2vw 0.9vh;
   background: rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 0.5vw;
@@ -335,8 +335,25 @@ table.departures td.time {
   opacity: 0;
   pointer-events: none;
   transition: opacity 1s ease;
+  overflow: hidden;
 }
 
 .printer-overlay.visible {
   opacity: 1;
+}
+
+.printer-overlay-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0.4vh;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.printer-overlay-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #4ade80;
+  transition: width 1s ease;
 }

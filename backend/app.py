@@ -157,7 +157,11 @@ CANDY_DARK_CSS = """
   background-color: #111 !important;
   color: #ddd !important;
 }
+/* Chat is viewed from across the room on the TV - bump the default ~13px
+   message text up so it's actually readable at a distance. */
 .message-pane li {
+  font-size: 1.8em !important;
+  line-height: 1.4 !important;
   border-bottom: 1px solid #333 !important;
   box-shadow: 0 1px 0 0 #000 !important;
 }
