@@ -15,6 +15,7 @@
     <span id="printer-overlay-text"></span>
     <div id="printer-overlay-bar" class="printer-overlay-bar"><div id="printer-overlay-bar-fill" class="printer-overlay-bar-fill"></div></div>
   </div>
+  <div id="boot-splash"></div>
 
   <script>
     (function () {
@@ -36,6 +37,13 @@
       var lastForced = false;
       var resetTimer = null;
       var pendingGen = 0;
+      var bootSplash = document.getElementById("boot-splash");
+
+      function hideBootSplash() {
+        if (!bootSplash) return;
+        bootSplash.classList.add("hidden");
+        bootSplash = null; // only ever fade it out once, for the first real slide
+      }
 
       function reportVisible() {
         // Let the backend know a slide has actually finished fading in, so
@@ -49,6 +57,7 @@
       }
 
       function swapToStandby() {
+        hideBootSplash();
         standby.classList.add("visible");
         active.classList.remove("visible");
         var justHidden = active;

@@ -342,6 +342,23 @@ table.departures td.time {
   opacity: 1;
 }
 
+/* Covers the page from first paint (so the "Loading..." placeholder is never
+   seen) until the first real slide has faded in, so the boot splash reads as
+   one continuous screen all the way from plymouth to the first real slide. */
+#boot-splash {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background: #000 url("/static/boot-splash.png") center / cover no-repeat;
+  opacity: 1;
+  transition: opacity 5s ease;
+}
+
+#boot-splash.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .printer-overlay-bar {
   position: absolute;
   left: 0;
