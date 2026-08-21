@@ -183,18 +183,26 @@ the kiosk takes over. To replace that with a plain "krautspace" splash
 sudo apt install plymouth plymouth-themes
 sudo mkdir -p /usr/share/plymouth/themes/krautspace
 sudo cp deploy/plymouth-krautspace/* /usr/share/plymouth/themes/krautspace/
-sudo update-alternatives --install /usr/share/plymouth/themes/default.plymouth \
-        default.plymouth /usr/share/plymouth/themes/krautspace/krautspace.plymouth 100
-sudo update-alternatives --set default.plymouth \
-        /usr/share/plymouth/themes/krautspace/krautspace.plymouth
+sudo /usr/sbin/plymouth-set-default-theme krautspace
 sudo update-initramfs -u
 ```
+
+Use `plymouth-set-default-theme` specifically, not `update-alternatives` —
+the initramfs-tools hook that decides which theme/plugin to bundle reads
+`/etc/plymouth/plymouthd.conf`'s `Theme=` line (which is what
+`plymouth-set-default-theme` writes), not the `default.plymouth`
+alternatives symlink. Pointing only the symlink leaves the theme
+unresolved at build time, and the hook silently falls back to bundling the
+built-in text-mode "details" theme instead — which is what shows up as
+scrolling green-on-black boot text despite `quiet`/`splash`. Verify with
+`lsinitramfs /boot/firmware/initramfs7 | grep krautspace` (swap `7` for
+whichever kernel variant `uname -r` reports) before trusting a reboot.
 
 Then append to `/boot/firmware/cmdline.txt` (same line, space-separated, no
 newlines):
 
 ```
-quiet splash loglevel=3 vt.global_cursor_default=0 logo.nologo plymouth.ignore-serial-consoles
+quiet splash loglevel=0 vt.global_cursor_default=0 logo.nologo plymouth.ignore-serial-consoles
 ```
 
 `xinitrc` calls `plymouth quit --retain-splash` before launching Chromium,
