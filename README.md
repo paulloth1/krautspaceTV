@@ -173,6 +173,36 @@ launches Chromium in kiosk mode pointed at the internal backend
 (`http://127.0.0.1:8081/display`). It waits for the backend to respond
 before starting X (see `ExecStartPre` in `deploy/kiosk.service`).
 
+### 4. Quiet boot with a custom splash screen (optional)
+
+By default the Pi prints kernel/systemd boot text to the HDMI output before
+the kiosk takes over. To replace that with a plain "krautspace" splash
+(`deploy/plymouth-krautspace/`):
+
+```sh
+sudo apt install plymouth plymouth-themes
+sudo mkdir -p /usr/share/plymouth/themes/krautspace
+sudo cp deploy/plymouth-krautspace/* /usr/share/plymouth/themes/krautspace/
+sudo update-alternatives --install /usr/share/plymouth/themes/default.plymouth \
+        default.plymouth /usr/share/plymouth/themes/krautspace/krautspace.plymouth 100
+sudo update-alternatives --set default.plymouth \
+        /usr/share/plymouth/themes/krautspace/krautspace.plymouth
+sudo update-initramfs -u
+```
+
+Then append to `/boot/firmware/cmdline.txt` (same line, space-separated, no
+newlines):
+
+```
+quiet splash loglevel=3 vt.global_cursor_default=0 logo.nologo plymouth.ignore-serial-consoles
+```
+
+`xinitrc` calls `plymouth quit --retain-splash` before launching Chromium,
+so the splash's last frame stays on screen (no black flash) until Chromium
+paints over it. To use your own logo instead, swap in a differently drawn
+`deploy/plymouth-krautspace/splash.png` (1920x1080, PNG) and rerun the
+`update-initramfs -u` step.
+
 ### Running tests
 
 ```sh
