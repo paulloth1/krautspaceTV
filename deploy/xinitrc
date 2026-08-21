@@ -11,6 +11,11 @@ xset s off
 xset -dpms
 xset s noblank
 
+# X's default root window background (grey stipple, or whatever plymouth's
+# retained frame happened to leave behind) would otherwise show for the
+# moment between Xorg coming up and Chromium's first paint.
+xsetroot -solid black
+
 # Hide the mouse cursor; there is no mouse interaction on this kiosk.
 unclutter -idle 0.5 -root &
 
