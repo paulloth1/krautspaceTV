@@ -14,10 +14,8 @@ xset s noblank
 # Hide the mouse cursor; there is no mouse interaction on this kiosk.
 unclutter -idle 0.5 -root &
 
-# Hand off from the boot splash cleanly: end the plymouth daemon (so it
-# doesn't fight X for the display) but leave its last frame on screen until
-# Chromium's first paint replaces it, instead of a black flash in between.
-command -v plymouth >/dev/null 2>&1 && plymouth quit --retain-splash
+# (plymouth's splash is already quit --retain-splash'd in kiosk.service's
+# ExecStartPre, before Xorg starts — see the comment there for why.)
 
 # Launch Chromium in kiosk mode as the final (PID 1) process of the X session,
 # so stopping the systemd service cleanly tears down the browser.

@@ -12,6 +12,12 @@ User=admin
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 WorkingDirectory=/home/admin/signage
 ExecStartPre=/bin/sh -c 'for i in $(seq 1 30); do curl -sf http://127.0.0.1:8081/display >/dev/null && exit 0; sleep 1; done; exit 1'
+# Release plymouth's hold on the display (but keep its last frame drawn)
+# before Xorg starts, not after: Xorg grabs DRM master as soon as it starts,
+# and doing this from xinitrc instead (which only runs once Xorg is already
+# up) meant Xorg sometimes had to contend with plymouthd for the display,
+# occasionally dumping its own startup log to the screen.
+ExecStartPre=-/usr/bin/plymouth quit --retain-splash
 ExecStart=/usr/bin/startx /home/admin/signage/deploy/xinitrc -- :0 vt1
 Restart=on-failure
 RestartSec=5
