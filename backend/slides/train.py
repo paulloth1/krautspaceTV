@@ -19,7 +19,7 @@ async def is_available(config: dict) -> bool:
 async def render(config: dict, slide_id: int | None = None) -> str:
     title = config.get("title") or "Departures"
     data = await fetch_json(config["api_url"])
-    if data is None:
+    if not isinstance(data, dict):
         return f'<div class="slide slide-train"><h2>{escape(title)}</h2><p>Unable to load departures.</p></div>'
 
     departures = data.get("departures", [])

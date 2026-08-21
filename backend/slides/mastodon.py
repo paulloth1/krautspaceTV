@@ -43,7 +43,7 @@ async def render(config: dict, slide_id: int | None = None) -> str:
     hashtag = config.get("hashtag", "").strip().lstrip("#")
     title = config.get("title") or f"#{hashtag}"
     statuses = await fetch_json(_timeline_url(config, 10), headers=_headers(config))
-    if statuses is None:
+    if not isinstance(statuses, list):
         return f'<div class="slide slide-mastodon"><h2>{escape(title)}</h2><p>Unable to load posts.</p></div>'
 
     items = []
