@@ -205,11 +205,32 @@ newlines):
 quiet splash loglevel=0 vt.global_cursor_default=0 logo.nologo plymouth.ignore-serial-consoles
 ```
 
-`xinitrc` calls `plymouth quit --retain-splash` before launching Chromium,
-so the splash's last frame stays on screen (no black flash) until Chromium
-paints over it. To use your own logo instead, swap in a differently drawn
+Two things end the splash cleanly rather than blanking the screen:
+
+- `kiosk.service`'s `ExecStartPre` runs `plymouth quit --retain-splash`
+  before Xorg starts (not from `xinitrc`, which only runs once Xorg is
+  already up and would have to contend with plymouthd for the display).
+- systemd's own `plymouth-quit.service` (`WantedBy=multi-user.target`) fires
+  independently, often earlier than kiosk.service, and its default action
+  is a plain `plymouth quit` with no `--retain-splash` — install the
+  override so it doesn't blank the screen first:
+
+  ```sh
+  sudo mkdir -p /etc/systemd/system/plymouth-quit.service.d
+  sudo cp deploy/plymouth-quit-retain-splash.conf \
+          /etc/systemd/system/plymouth-quit.service.d/override.conf
+  sudo systemctl daemon-reload
+  ```
+
+Either way, `--retain-splash` just keeps the last frame drawn (not an
+active daemon), so display.html's own `#boot-splash` overlay (shown from
+first paint) can paint over it without a flash once Chromium starts.
+
+To use your own logo instead, swap in a differently drawn
 `deploy/plymouth-krautspace/splash.png` (1920x1080, PNG) and rerun the
-`update-initramfs -u` step.
+`update-initramfs -u` step — and update `#boot-splash`'s markup in
+`backend/templates/display.html` / styles in `backend/static/display.css`
+to match, since that overlay is real HTML/CSS, not the same image file.
 
 ### Running tests
 
