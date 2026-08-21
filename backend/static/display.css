@@ -344,12 +344,19 @@ table.departures td.time {
 
 /* Covers the page from first paint (so the "Loading..." placeholder is never
    seen) until the first real slide has faded in, so the boot splash reads as
-   one continuous screen all the way from plymouth to the first real slide. */
+   one continuous screen all the way from plymouth to the first real slide.
+   Mirrors deploy/plymouth-krautspace/splash.png's static look, but built as
+   real markup so the progress bar can animate (plymouth's own splash, shown
+   before Chromium exists, stays a static image). */
 #boot-splash {
   position: absolute;
   inset: 0;
   z-index: 1000;
-  background: #000 url("/static/boot-splash.png") center / cover no-repeat;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   opacity: 1;
   transition: opacity 5s ease;
 }
@@ -357,6 +364,55 @@ table.departures td.time {
 #boot-splash.hidden {
   opacity: 0;
   pointer-events: none;
+}
+
+.boot-splash-wordmark {
+  font-size: 6.8vw;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.boot-splash-wordmark .tv {
+  color: #4ade80;
+}
+
+.boot-splash-bar {
+  width: 20vw;
+  height: 0.4vh;
+  margin-top: 2vh;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+  position: relative;
+}
+
+.boot-splash-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  background: #4ade80;
+  animation: boot-splash-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes boot-splash-sweep {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+
+.boot-splash-status {
+  margin-top: 2vh;
+  font-size: 1.6vw;
+  color: #8c8c8c;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boot-splash-bar-fill {
+    animation: none;
+    left: 0;
+    width: 100%;
+  }
 }
 
 .printer-overlay-bar {
