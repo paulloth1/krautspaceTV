@@ -1,0 +1,41 @@
+[project]
+name = "krautspacetv"
+version = "0.1.0"
+description = "Digital signage for the Krautspace hackerspace TV — FastAPI backend plus a Chromium kiosk display."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi==0.140.0",
+    "uvicorn==0.51.0",
+    "jinja2==3.1.6",
+    "markupsafe>=3.0",
+    "httpx==0.28.1",
+    "python-multipart==0.0.32",
+    "aiosqlite==0.22.1",
+    "defusedxml==0.7.1",
+    "websockets==15.0.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+]
+
+# The backend is an application run from the repo root (`uvicorn backend.app:app`),
+# not a library that gets installed. Telling uv the project is not a package keeps
+# `uv sync` to "install the dependencies into .venv" with no build step.
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+# tests import `backend.*`, which lives at the repo root rather than in site-packages.
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]

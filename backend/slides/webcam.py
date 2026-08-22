@@ -1,6 +1,5 @@
-from markupsafe import escape
-
 import httpx
+from markupsafe import escape
 
 from .registry import ConfigField, SlideType, register
 

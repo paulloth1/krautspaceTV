@@ -137,15 +137,23 @@ HTTP, so every port shows consistent state:
 
 ### 1. OS and dependencies
 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/): `pyproject.toml`
+declares them, `uv.lock` pins the exact resolved versions, and `uv sync` builds
+the project-local `.venv` the systemd units run from.
+
 On the Pi (as the `admin` user):
 
 ```sh
-sudo apt install python3-venv chromium xinit x11-xserver-utils unclutter scrot
+sudo apt install chromium xinit x11-xserver-utils unclutter scrot
+curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/paulloth1/krautspaceTV.git ~/signage
 cd ~/signage
-python3 -m venv ~/signage-venv
-~/signage-venv/bin/pip install -r requirements.txt
+uv sync --frozen --no-dev
 ```
+
+`--frozen` installs exactly what `uv.lock` pins and fails rather than silently
+re-resolving; `--no-dev` skips pytest, which the Pi has no use for. Re-run the
+same command after every `git pull` that touches `pyproject.toml` or `uv.lock`.
 
 ### 2. Self-signed TLS certificate (for the HTTPS admin services)
 
@@ -173,12 +181,37 @@ launches Chromium in kiosk mode pointed at the internal backend
 (`http://127.0.0.1:8081/display`). It waits for the backend to respond
 before starting X (see `ExecStartPre` in `deploy/kiosk.service`).
 
-### Running tests
+### Development
+
+With [devenv](https://devenv.sh) (`devenv shell`, or `direnv allow` if you use
+direnv), everything below is already on `PATH`:
+
+| Command | Does |
+|---|---|
+| `serve` | run the backend on `127.0.0.1:8081` with autoreload |
+| `check` | `ruff check` followed by the full test suite |
+| `lint` / `fmt` | lint only / autofix and format |
+| `version` | print the semver, or bump it: `version patch\|minor\|major` |
+| `certs` | generate the self-signed TLS cert |
+| `devenv up` | run the backend as a supervised process |
+| `devenv test` | what CI would run (`check`) |
+
+The shell pins Python 3.13 (matching the Pi's Debian 13), syncs the venv from
+`uv.lock` on entry, and installs git hooks that run `ruff` before each commit.
+`SIGNAGE_DB_PATH` points at `signage-dev.db` there, so local runs can never
+touch a real `signage.db`.
+
+Without devenv, uv alone is enough:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/pytest
+uv sync            # creates .venv from uv.lock, including dev dependencies
+uv run pytest
 ```
+
+### Versioning
+
+The project follows [semantic versioning](https://semver.org); the version
+lives in `pyproject.toml` and is bumped as part of the change that warrants it
+(see `CLAUDE.md` for which kind of change maps to which bump).
 
 </details>

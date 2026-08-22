@@ -9,7 +9,7 @@ Type=simple
 User=admin
 Environment=SIGNAGE_ROTATION_OWNER=1
 WorkingDirectory=/home/admin/signage
-ExecStart=/home/admin/signage-venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8081
+ExecStart=/home/admin/signage/.venv/bin/uvicorn backend.app:app --host 127.0.0.1 --port 8081
 Restart=on-failure
 RestartSec=5
 

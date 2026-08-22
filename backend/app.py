@@ -9,11 +9,11 @@ from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
 import httpx
-from markupsafe import escape
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from markupsafe import escape
 
 from . import db, system_info
 from .preview import get_preview_png
