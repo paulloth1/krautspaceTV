@@ -16,6 +16,7 @@ from fastapi.templating import Jinja2Templates
 from markupsafe import escape
 
 from . import db, system_info
+from .gpx import fetch_track
 from .preview import get_preview_png
 from .printer import get_printer_status
 from .rotation import STATE, rotation_loop
@@ -431,6 +432,70 @@ async def printer_status():
     host = await db.get_setting("printer_host", "")
     status = await get_printer_status(host)
     return status or {"printing": False}
+
+
+# OpenStreetMap's standard tiles: fine for one kiosk's occasional refresh, and
+# the only sane default that needs no account. Override per slide for anything
+# heavier or for a dark-themed provider.
+DEFAULT_TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+DEFAULT_TILE_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+
+
+async def _gpx_slide(slide_id: int) -> dict | None:
+    """The stored slide behind a /gpx route, or None if it isn't a gpx slide.
+
+    Both routes are addressed by slide id rather than taking the API base URL
+    and token as query params, so the token stays server-side (same reasoning
+    as /proxy's slide_id path).
+    """
+    slide = await db.get_slide(slide_id)
+    if slide is None or slide["type"] != "gpx":
+        return None
+    return slide
+
+
+@app.get("/gpx/{slide_id}")
+async def gpx_map(request: Request, slide_id: int):
+    """The Leaflet map page a `gpx` slide iframes.
+
+    It exists as its own document because display.html injects slide HTML with
+    innerHTML, which never runs <script> — so a map can't live in the slide
+    markup itself.
+    """
+    slide = await _gpx_slide(slide_id)
+    if slide is None:
+        return Response(content="Slide not found", status_code=404)
+    config = slide["config"]
+
+    try:
+        refresh_seconds = max(0, int(float(config.get("refresh_seconds") or 60)))
+    except ValueError:
+        refresh_seconds = 60
+
+    return templates.TemplateResponse(
+        request,
+        "gpx_map.html",
+        {
+            "title": config.get("title") or "",
+            "track_url": f"/api/slide/{slide_id}/track",
+            "refresh_seconds": refresh_seconds,
+            "tile_url": config.get("tile_url") or DEFAULT_TILE_URL,
+            "tile_attribution": config.get("tile_attribution") or DEFAULT_TILE_ATTRIBUTION,
+        },
+    )
+
+
+@app.get("/api/slide/{slide_id}/track")
+async def slide_track(slide_id: int):
+    """Parsed, decimated GPX for the map page above (see backend/gpx.py).
+
+    Upstream failures come back as {"error": ..., "status": ...} with HTTP 200
+    so the page can print the message; only an unknown slide is a real 404.
+    """
+    slide = await _gpx_slide(slide_id)
+    if slide is None:
+        return Response(content="Slide not found", status_code=404)
+    return await fetch_track(slide["config"])
 
 
 @app.get("/api/preview.png")

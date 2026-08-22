@@ -72,6 +72,9 @@ flake; it is a workstation build and CI target.
 - Import order in `backend/slides/__init__.py` is deliberate, not alphabetical —
   it sets the order of the admin UI's slide-type picker, so isort is disabled
   for that file.
+- `display.html` injects slide HTML with `innerHTML`, so a slide's `render()`
+  output can never contain a working `<script>`. Anything needing JS has to be
+  its own page behind an iframe, the way the `gpx` slide uses `/gpx/<id>`.
 - The backend runs as four uvicorn processes on the Pi; only the one with
   `SIGNAGE_ROTATION_OWNER=1` drives rotation, and the others forward to it. A
   change to the current-slide state has to work through both paths.

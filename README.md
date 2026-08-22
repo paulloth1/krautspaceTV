@@ -50,6 +50,39 @@ admin UI for managing slides.
   get there. Used by the kraut.space chat slide, since its XMPP handshake
   can take longer than 30s on the Pi's weak CPU.
 
+## Notes on the `gpx` (GPS track map) slide type
+
+Draws a device's recent track on a [Leaflet](https://leafletjs.com) map,
+fetched from a Protegear-backed GPX API (`GET /v1/devices/{imei}/gpx`).
+
+- Configure the API base URL, the device IMEI, and — if that API was started
+  with `-auth-token` — the token. The token is only ever sent from the backend
+  as an `Authorization: Bearer` header; it never reaches the browser and never
+  appears in a URL.
+- `hours` is the look-back window (fractional allowed). Anything above the
+  API's own `-max-window` (720h by default) is clamped rather than turned into
+  an error.
+- `gap` splits the track into separate lines after a pause that long (`30m` by
+  default, `-1s` to never split), so a device that sat still overnight doesn't
+  get a straight line drawn across the map.
+- Alarm events (SOS, crash, fall) come back as GPX waypoints and are drawn as
+  labelled yellow markers. Turn them off with the `waypoints` field.
+- `refresh_seconds` re-fetches the track in place, without reloading the page
+  (0 loads it once). The slide's iframe is marked `no_reset` for the same
+  reason the chat slide is: the display's periodic 30s iframe reload would
+  restart the map for nothing.
+- Tiles come from OpenStreetMap by default; `tile_url`/`tile_attribution`
+  point it at another provider (e.g. a dark-themed one).
+
+Leaflet itself is vendored under `backend/static/vendor/leaflet/` rather than
+loaded from a CDN, so the map does not depend on a third party being reachable.
+
+The map lives in its own page (`/gpx/<slide-id>`, iframed by the slide) because
+the display injects slide HTML with `innerHTML`, which never executes
+`<script>`. That page reads pre-parsed JSON from `/api/slide/<id>/track`: the
+GPX is parsed and thinned to at most 2000 points server-side, since the Pi 2
+stalls visibly on DOM-parsing a multi-thousand-point GPX file.
+
 ## Printer status overlay
 
 - If a "3D printer host" is set in "Rotation settings", the display polls a
@@ -98,7 +131,8 @@ admin UI for managing slides.
   availability check), `mastodon` (hashtag timeline), `matrix` (room
   messages), `train` (generic departure-board JSON API), `api_status` (JSON
   field read from an API, shown as a true/false label), `rss` (RSS/Atom feed,
-  with Mastodon-tag-RSS-specific quirks like author/image extraction).
+  with Mastodon-tag-RSS-specific quirks like author/image extraction), `gpx`
+  (a GPS track drawn on a Leaflet map, see below).
   `render()` fetching is factored through `backend/slides/_http.py`'s shared
   `fetch_json()` helper for the API-backed types.
 - **Storage**: SQLite via `aiosqlite` (`signage.db`, gitignored, WAL mode) —
