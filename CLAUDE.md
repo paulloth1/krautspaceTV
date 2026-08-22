@@ -60,6 +60,13 @@ pins, and both are committed.
 
 Without devenv: `uv sync` then `uv run pytest`.
 
+`flake.nix` builds the same thing with Nix, driving the dependency set from
+`uv.lock` via uv2nix — so `pyproject.toml` and `uv.lock` remain the only place
+dependencies are declared, and the flake needs no edit when they change. It also
+reads the semver straight out of `pyproject.toml`. `nix flake check` runs the
+package build, ruff, and pytest. The Pi runs Debian, so nothing deploys from the
+flake; it is a workstation build and CI target.
+
 ## Things to keep in mind
 
 - Import order in `backend/slides/__init__.py` is deliberate, not alphabetical —

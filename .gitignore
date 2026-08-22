@@ -13,6 +13,10 @@ signage-venv/
 # Self-signed TLS cert for the HTTPS admin services — generated per host
 certs/
 
+# nix build output symlinks
+result
+result-*
+
 # Devenv
 .devenv*
 devenv.local.nix
