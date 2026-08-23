@@ -244,9 +244,13 @@ table.departures td.time {
 }
 
 .rss-thumb {
-  width: 12vw;
-  height: 12vw;
-  object-fit: cover;
+  width: 18vw;
+  height: 18vw;
+  /* contain (not cover) keeps the post's actual aspect ratio instead of
+     center-cropping it square; any letterboxing is invisible against the
+     page's own black background. */
+  object-fit: contain;
+  background: #000;
   border-radius: 0.5vw;
   flex-shrink: 0;
 }
