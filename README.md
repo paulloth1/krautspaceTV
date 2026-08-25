@@ -50,6 +50,39 @@ admin UI for managing slides.
   get there. Used by the kraut.space chat slide, since its XMPP handshake
   can take longer than 30s on the Pi's weak CPU.
 
+## Notes on the `gpx` (GPS track map) slide type
+
+Draws a device's recent track on a [Leaflet](https://leafletjs.com) map,
+fetched from a Protegear-backed GPX API (`GET /v1/devices/{imei}/gpx`).
+
+- Configure the API base URL, the device IMEI, and — if that API was started
+  with `-auth-token` — the token. The token is only ever sent from the backend
+  as an `Authorization: Bearer` header; it never reaches the browser and never
+  appears in a URL.
+- `hours` is the look-back window (fractional allowed). Anything above the
+  API's own `-max-window` (720h by default) is clamped rather than turned into
+  an error.
+- `gap` splits the track into separate lines after a pause that long (`30m` by
+  default, `-1s` to never split), so a device that sat still overnight doesn't
+  get a straight line drawn across the map.
+- Alarm events (SOS, crash, fall) come back as GPX waypoints and are drawn as
+  labelled yellow markers. Turn them off with the `waypoints` field.
+- `refresh_seconds` re-fetches the track in place, without reloading the page
+  (0 loads it once). The slide's iframe is marked `no_reset` for the same
+  reason the chat slide is: the display's periodic 30s iframe reload would
+  restart the map for nothing.
+- Tiles come from OpenStreetMap by default; `tile_url`/`tile_attribution`
+  point it at another provider (e.g. a dark-themed one).
+
+Leaflet itself is vendored under `backend/static/vendor/leaflet/` rather than
+loaded from a CDN, so the map does not depend on a third party being reachable.
+
+The map lives in its own page (`/gpx/<slide-id>`, iframed by the slide) because
+the display injects slide HTML with `innerHTML`, which never executes
+`<script>`. That page reads pre-parsed JSON from `/api/slide/<id>/track`: the
+GPX is parsed and thinned to at most 2000 points server-side, since the Pi 2
+stalls visibly on DOM-parsing a multi-thousand-point GPX file.
+
 ## Printer status overlay
 
 - If a "3D printer host" is set in "Rotation settings", the display polls a
@@ -98,7 +131,8 @@ admin UI for managing slides.
   availability check), `mastodon` (hashtag timeline), `matrix` (room
   messages), `train` (generic departure-board JSON API), `api_status` (JSON
   field read from an API, shown as a true/false label), `rss` (RSS/Atom feed,
-  with Mastodon-tag-RSS-specific quirks like author/image extraction).
+  with Mastodon-tag-RSS-specific quirks like author/image extraction), `gpx`
+  (a GPS track drawn on a Leaflet map, see below).
   `render()` fetching is factored through `backend/slides/_http.py`'s shared
   `fetch_json()` helper for the API-backed types.
 - **Storage**: SQLite via `aiosqlite` (`signage.db`, gitignored, WAL mode) —
@@ -137,15 +171,23 @@ HTTP, so every port shows consistent state:
 
 ### 1. OS and dependencies
 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/): `pyproject.toml`
+declares them, `uv.lock` pins the exact resolved versions, and `uv sync` builds
+the project-local `.venv` the systemd units run from.
+
 On the Pi (as the `admin` user):
 
 ```sh
-sudo apt install python3-venv chromium xinit x11-xserver-utils unclutter scrot
+sudo apt install chromium xinit x11-xserver-utils unclutter scrot
+curl -LsSf https://astral.sh/uv/install.sh | sh
 git clone https://github.com/paulloth1/krautspaceTV.git ~/signage
 cd ~/signage
-python3 -m venv ~/signage-venv
-~/signage-venv/bin/pip install -r requirements.txt
+uv sync --frozen --no-dev
 ```
+
+`--frozen` installs exactly what `uv.lock` pins and fails rather than silently
+re-resolving; `--no-dev` skips pytest, which the Pi has no use for. Re-run the
+same command after every `git pull` that touches `pyproject.toml` or `uv.lock`.
 
 ### 2. Self-signed TLS certificate (for the HTTPS admin services)
 
@@ -173,12 +215,60 @@ launches Chromium in kiosk mode pointed at the internal backend
 (`http://127.0.0.1:8081/display`). It waits for the backend to respond
 before starting X (see `ExecStartPre` in `deploy/kiosk.service`).
 
-### Running tests
+### Development
+
+With [devenv](https://devenv.sh) (`devenv shell`, or `direnv allow` if you use
+direnv), everything below is already on `PATH`:
+
+| Command | Does |
+|---|---|
+| `serve` | run the backend on `127.0.0.1:8081` with autoreload |
+| `check` | `ruff check` followed by the full test suite |
+| `lint` / `fmt` | lint only / autofix and format |
+| `version` | print the semver, or bump it: `version patch\|minor\|major` |
+| `certs` | generate the self-signed TLS cert |
+| `devenv up` | run the backend as a supervised process |
+| `devenv test` | what CI would run (`check`) |
+
+The shell pins Python 3.13 (matching the Pi's Debian 13), syncs the venv from
+`uv.lock` on entry, and installs git hooks that run `ruff` before each commit.
+`SIGNAGE_DB_PATH` points at `signage-dev.db` there, so local runs can never
+touch a real `signage.db`.
+
+Without devenv, uv alone is enough:
 
 ```sh
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt -r requirements-dev.txt
-.venv/bin/pytest
+uv sync            # creates .venv from uv.lock, including dev dependencies
+uv run pytest
 ```
+
+### Building with Nix
+
+`flake.nix` builds the backend from the same `uv.lock` the Pi installs from, so
+the Nix build and `uv sync` resolve to identical dependency versions.
+
+```sh
+nix build                     # -> ./result/bin/krautspacetv-backend
+nix run . -- --port 8081      # run it; extra args go straight to uvicorn
+nix flake check               # builds the package, runs ruff and the test suite
+nix develop                   # plain dev shell, if you are not using devenv
+```
+
+The built wrapper puts `scrot` on `PATH` (needed by the admin UI's HDMI
+preview) and defaults `SIGNAGE_DB_PATH` to `signage.db` in the working
+directory, since the package tree itself is read-only in the Nix store.
+
+`nix flake check` deselects `test_ssrf_check_accepts_public_hostname`: it
+resolves `example.com` for real, and the Nix sandbox has no network. `check`
+and `devenv test` still run it.
+
+The Pi is Debian, not NixOS — it installs via `uv sync` and the systemd units in
+`deploy/`. The flake is for building and testing on a workstation.
+
+### Versioning
+
+The project follows [semantic versioning](https://semver.org); the version
+lives in `pyproject.toml` and is bumped as part of the change that warrants it
+(see `CLAUDE.md` for which kind of change maps to which bump).
 
 </details>

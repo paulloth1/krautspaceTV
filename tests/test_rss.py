@@ -1,3 +1,5 @@
+from defusedxml import ElementTree
+
 from backend.slides.rss import (
     _first_image_url,
     _guess_author,
@@ -7,7 +9,6 @@ from backend.slides.rss import (
     _pick_headline,
     _strip_html,
 )
-from defusedxml import ElementTree
 
 
 def _item(xml_fragment: str):
