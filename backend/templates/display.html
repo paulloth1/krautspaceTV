@@ -26,11 +26,17 @@
     (function () {
       var POLL_MS = 5000;
       var IFRAME_RESET_MS = 30000; // reset scroll position on cross-origin iframes we can't control directly
-      // A slide can opt out by marking its iframe data-no-reset (see media.py's
-      // no_reset config field) - some embeds (e.g. a chat client that has to
-      // reconnect/rejoin from scratch) take longer than IFRAME_RESET_MS to
-      // finish loading on the Pi's weak CPU, so periodic resets would prevent
-      // them from ever finishing instead of just fixing their scroll position.
+      // A slide can opt out of that short interval by marking its iframe
+      // data-no-reset (see media.py's no_reset config field) - some embeds
+      // (e.g. a chat client that has to reconnect/rejoin from scratch) take
+      // longer than IFRAME_RESET_MS to finish loading on the Pi's weak CPU,
+      // so resetting that often would prevent them from ever finishing
+      // instead of just fixing their scroll position. They still get a much
+      // longer safety-net reset instead of none at all: a transient load
+      // failure (upstream timeout, dropped connection) would otherwise leave
+      // the slide stuck showing an error/blank state indefinitely, since
+      // nothing else ever reloads a no_reset iframe once it's shown.
+      var IFRAME_LONG_RESET_MS = 10 * 60 * 1000;
       var READY_TIMEOUT_MS = 15000; // don't wait forever for a slow/broken resource before showing it anyway
       var IFRAME_SETTLE_MS = 10000; // iframe "load" fires on initial shell load, before JS apps inside finish fetching their own data
       var FADE_MS = 5000; // must match the opacity transition duration in display.css
@@ -114,14 +120,15 @@
           clearInterval(resetTimer);
           resetTimer = null;
         }
-        var resettableIframe = active.querySelector("iframe:not([data-no-reset])");
-        if (resettableIframe) {
+        var iframe = active.querySelector("iframe");
+        if (iframe) {
+          var interval = iframe.hasAttribute("data-no-reset") ? IFRAME_LONG_RESET_MS : IFRAME_RESET_MS;
           resetTimer = setInterval(function () {
             // Reload through the same hidden-load-then-fade path used for
             // rotation, rather than mutating the visible iframe in place
             // (which would flash its loading state with no transition).
             showHtml(lastHtml);
-          }, IFRAME_RESET_MS);
+          }, interval);
         }
       }
 
