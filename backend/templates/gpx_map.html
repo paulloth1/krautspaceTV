@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/static/gpx_map.css">
+</head>
+<body>
+  <div id="map"></div>
+  <div id="info" class="info hidden">
+    <span class="info-title"></span>
+    <span class="info-meta"></span>
+  </div>
+  <div id="error" class="error hidden"></div>
+
+  <script src="/static/vendor/leaflet/leaflet.js"></script>
+  <script>
+    (function () {
+      var TRACK_URL = {{ track_url|tojson }};
+      var REFRESH_MS = {{ refresh_seconds|tojson }} * 1000;
+      var TITLE = {{ title|tojson }};
+      var TILE_URL = {{ tile_url|tojson }};
+      var TILE_ATTRIBUTION = {{ tile_attribution|tojson }};
+
+      var infoEl = document.getElementById("info");
+      var titleEl = infoEl.querySelector(".info-title");
+      var metaEl = infoEl.querySelector(".info-meta");
+      var errorEl = document.getElementById("error");
+
+      // No pointer or keyboard input reaches a kiosk TV, so every interaction
+      // handler is off: it saves the Pi 2 the event plumbing and stops a stray
+      // touch from leaving the map panned somewhere useless. preferCanvas
+      // matters more — an SVG polyline with a couple of thousand points
+      // repaints far slower than the canvas renderer on this hardware.
+      var map = L.map("map", {
+        preferCanvas: true,
+        zoomControl: false,
+        attributionControl: true,
+        dragging: false,
+        touchZoom: false,
+        scrollWheelZoom: false,
+        doubleClickZoom: false,
+        boxZoom: false,
+        keyboard: false,
+        zoomAnimation: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false
+      });
+
+      L.tileLayer(TILE_URL, {
+        maxZoom: 19,
+        attribution: TILE_ATTRIBUTION,
+        // The kiosk reloads this page rarely, so a slightly larger tile buffer
+        // costs little and avoids blank edges after a fitBounds jump.
+        keepBuffer: 4
+      }).addTo(map);
+
+      // Start with a view set, so Leaflet has something to render even if the
+      // very first fetch fails and never gives us bounds to fit.
+      map.setView([0, 0], 2);
+
+      var layer = L.layerGroup().addTo(map);
+
+      function showError(message) {
+        errorEl.textContent = message;
+        errorEl.classList.remove("hidden");
+      }
+
+      function clearError() {
+        errorEl.classList.add("hidden");
+      }
+
+      function formatMeta(track) {
+        var parts = [];
+        if (track.distance_km) parts.push(track.distance_km.toFixed(1) + " km");
+        if (track.point_count) parts.push(track.point_count + " fixes");
+        if (track.last_fix) {
+          var when = new Date(track.last_fix);
+          if (!isNaN(when.getTime())) {
+            parts.push("last " + when.toLocaleString(undefined, {
+              day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+            }));
+          }
+        }
+        return parts.join(" · ");
+      }
+
+      function draw(track) {
+        layer.clearLayers();
+
+        track.segments.forEach(function (points) {
+          L.polyline(points, { color: "#ff7f2a", weight: 5, opacity: 0.9 }).addTo(layer);
+        });
+
+        if (track.start) {
+          L.circleMarker(track.start, {
+            radius: 7, color: "#ffffff", weight: 2, fillColor: "#4ade80", fillOpacity: 1
+          }).addTo(layer);
+        }
+        if (track.end) {
+          L.circleMarker(track.end, {
+            radius: 9, color: "#ffffff", weight: 3, fillColor: "#ff3b30", fillOpacity: 1
+          }).addTo(layer);
+        }
+
+        track.waypoints.forEach(function (wpt) {
+          var marker = L.circleMarker([wpt.lat, wpt.lon], {
+            radius: 8, color: "#ffffff", weight: 2, fillColor: "#facc15", fillOpacity: 1
+          }).addTo(layer);
+          if (wpt.name) {
+            // Permanent, because nobody is going to hover a TV. Alarm events
+            // are rare enough that the labels do not pile up.
+            marker.bindTooltip(wpt.name, { permanent: true, direction: "top", className: "wpt-label" });
+          }
+        });
+
+        if (track.bounds) {
+          map.fitBounds(track.bounds, { padding: [40, 40], animate: false, maxZoom: 17 });
+        }
+
+        titleEl.textContent = TITLE || track.name || "Track";
+        metaEl.textContent = formatMeta(track);
+        infoEl.classList.remove("hidden");
+      }
+
+      function load() {
+        fetch(TRACK_URL, { cache: "no-store" })
+          .then(function (resp) { return resp.json(); })
+          .then(function (track) {
+            if (track.error) {
+              showError(track.error);
+              return;
+            }
+            clearError();
+            if (!track.segments.length && !track.waypoints.length) {
+              showError("No positions in the selected window.");
+              return;
+            }
+            draw(track);
+          })
+          .catch(function () {
+            showError("Could not load the track.");
+          });
+      }
+
+      load();
+      if (REFRESH_MS > 0) {
+        setInterval(load, REFRESH_MS);
+      }
+    })();
+  </script>
+</body>
+</html>

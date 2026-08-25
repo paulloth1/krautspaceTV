@@ -323,6 +323,23 @@ table.departures td.time {
   border: none;
 }
 
+/* GPS track map (gpx) — a full-bleed iframe onto /gpx/<id>, same as media URLs.
+   The map's own styling lives in gpx_map.css, inside that iframe. */
+.slide-gpx {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  display: block;
+}
+
+.slide-gpx iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
 /* Printer overlay: drawn on top of whatever slide is showing, independent
    of rotation (see display.html's pollPrinter). Kept small/unobtrusive. */
 .printer-overlay {

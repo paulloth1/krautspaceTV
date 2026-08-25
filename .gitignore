@@ -4,5 +4,26 @@ venv/
 signage-venv/
 .venv/
 *.db
+*.db-wal
+*.db-shm
 .DS_Store
 .pytest_cache/
+.ruff_cache/
+
+# Self-signed TLS cert for the HTTPS admin services — generated per host
+certs/
+
+# nix build output symlinks
+result
+result-*
+
+# Devenv
+.devenv*
+devenv.local.nix
+devenv.local.yaml
+
+# direnv
+.direnv
+
+# pre-commit
+.pre-commit-config.yaml
