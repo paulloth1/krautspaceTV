@@ -41,7 +41,7 @@ async def render(config: dict, slide_id: int | None = None) -> str:
     departures = data.get("departures", [])
     rows = []
     for dep in departures:
-        line = escape(str(dep.get("line", "")))
+        line = escape(str(dep.get("train", "")))
         destination = escape(str(dep.get("destination", "")))
         time = escape(_format_time(dep.get("time")))
         rows.append(
@@ -61,7 +61,7 @@ register(
         config_fields=[
             ConfigField(
                 name="api_url",
-                label="Departures API URL (JSON: {departures:[{line,destination,time}]})",
+                label="Departures API URL (JSON: {departures:[{train,destination,time}]})",
             ),
             ConfigField(name="title", label="Display title", required=False),
         ],
