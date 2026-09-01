@@ -1,7 +1,23 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from markupsafe import escape
 
 from ._http import fetch_json
 from .registry import ConfigField, SlideType, register
+
+# Departure APIs in the wild give a time either as "HH:MM" already or as a
+# Unix timestamp in seconds (e.g. dbf.finalrewind.org's ?hafas=... JSON) -
+# accept either rather than assuming one. Timestamps are rendered in the
+# board's own timezone regardless of the host's, since this is always a
+# specific local departure board, not wherever the backend happens to run.
+BOARD_TZ = ZoneInfo("Europe/Berlin")
+
+
+def _format_time(raw) -> str:
+    if isinstance(raw, (int, float)):
+        return datetime.fromtimestamp(raw, tz=BOARD_TZ).strftime("%H:%M")
+    return str(raw or "")
 
 
 async def is_available(config: dict) -> bool:
@@ -27,7 +43,7 @@ async def render(config: dict, slide_id: int | None = None) -> str:
     for dep in departures:
         line = escape(str(dep.get("line", "")))
         destination = escape(str(dep.get("destination", "")))
-        time = escape(str(dep.get("time", "")))
+        time = escape(_format_time(dep.get("time")))
         rows.append(
             f"<tr><td class='line'>{line}</td><td>{destination}</td><td class='time'>{time}</td></tr>"
         )
