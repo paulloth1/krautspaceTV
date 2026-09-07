@@ -69,77 +69,6 @@
     </section>
 
     <section>
-      <h2>Rotation settings</h2>
-      <form method="post" action="/admin/settings">
-        <div class="form-row">
-          <label for="rotation_interval_seconds">
-            Rotation interval (seconds)
-            <span class="field-hint">minimum 20s &mdash; shorter intervals can freeze iframe slides before they finish loading</span>
-          </label>
-          <input
-            type="number"
-            id="rotation_interval_seconds"
-            name="rotation_interval_seconds"
-            min="20"
-            value="{{ rotation_interval }}"
-            required
-          >
-        </div>
-        <div class="form-row">
-          <label for="printer_host">
-            3D printer host (IP or hostname)
-            <span class="field-hint">Creality K1-family printer on the local network &mdash; shows a small "printing" overlay on the display while it's running. Leave blank to disable.</span>
-          </label>
-          <input
-            type="text"
-            id="printer_host"
-            name="printer_host"
-            value="{{ printer_host }}"
-            placeholder="192.168.1.50"
-          >
-        </div>
-        <div class="form-row">
-          <label for="canary_mqtt_host">
-            Canary MQTT broker host (IP or hostname)
-            <span class="field-hint">Shows a prominent alert banner at the top of the display while
-            smart glasses are detected nearby, and a quieter "offline" warning if the canary itself
-            stops reporting in. Leave blank to disable.</span>
-          </label>
-          <input
-            type="text"
-            id="canary_mqtt_host"
-            name="canary_mqtt_host"
-            value="{{ canary_mqtt_host }}"
-            placeholder="192.168.1.50"
-          >
-        </div>
-        <div class="form-row">
-          <label for="canary_mqtt_port">Canary MQTT broker port</label>
-          <input
-            type="number"
-            id="canary_mqtt_port"
-            name="canary_mqtt_port"
-            value="{{ canary_mqtt_port }}"
-          >
-        </div>
-        <div class="form-row">
-          <label for="canary_topic_prefix">
-            Canary MQTT topic prefix
-            <span class="field-hint">Expects "&lt;prefix&gt;/event", "&lt;prefix&gt;/state" and "&lt;prefix&gt;/status" underneath it.</span>
-          </label>
-          <input
-            type="text"
-            id="canary_topic_prefix"
-            name="canary_topic_prefix"
-            value="{{ canary_topic_prefix }}"
-            placeholder="canary/glasses"
-          >
-        </div>
-        <button type="submit">Save settings</button>
-      </form>
-    </section>
-
-    <section>
       <h2>Slides</h2>
       {% if slides %}
       <table class="slides">
@@ -221,8 +150,8 @@
       </form>
     </section>
 
-    <section>
-      <h2>System status</h2>
+    <details class="collapsible-section">
+      <summary><h2>System status</h2></summary>
       <dl id="system-status" class="stat-grid"><dt>Loading&hellip;</dt><dd></dd></dl>
       <script>
         (function () {
@@ -270,7 +199,78 @@
           setInterval(refresh, 10000);
         })();
       </script>
-    </section>
+    </details>
+
+    <details class="collapsible-section">
+      <summary><h2>Rotation settings</h2></summary>
+      <form method="post" action="/admin/settings">
+        <div class="form-row">
+          <label for="rotation_interval_seconds">
+            Rotation interval (seconds)
+            <span class="field-hint">minimum 20s &mdash; shorter intervals can freeze iframe slides before they finish loading</span>
+          </label>
+          <input
+            type="number"
+            id="rotation_interval_seconds"
+            name="rotation_interval_seconds"
+            min="20"
+            value="{{ rotation_interval }}"
+            required
+          >
+        </div>
+        <div class="form-row">
+          <label for="printer_host">
+            3D printer host (IP or hostname)
+            <span class="field-hint">Creality K1-family printer on the local network &mdash; shows a small "printing" overlay on the display while it's running. Leave blank to disable.</span>
+          </label>
+          <input
+            type="text"
+            id="printer_host"
+            name="printer_host"
+            value="{{ printer_host }}"
+            placeholder="192.168.1.50"
+          >
+        </div>
+        <div class="form-row">
+          <label for="canary_mqtt_host">
+            Canary MQTT broker host (IP or hostname)
+            <span class="field-hint">Shows a prominent alert banner at the top of the display while
+            smart glasses are detected nearby, and a quieter "offline" warning if the canary itself
+            stops reporting in. Leave blank to disable.</span>
+          </label>
+          <input
+            type="text"
+            id="canary_mqtt_host"
+            name="canary_mqtt_host"
+            value="{{ canary_mqtt_host }}"
+            placeholder="192.168.1.50"
+          >
+        </div>
+        <div class="form-row">
+          <label for="canary_mqtt_port">Canary MQTT broker port</label>
+          <input
+            type="number"
+            id="canary_mqtt_port"
+            name="canary_mqtt_port"
+            value="{{ canary_mqtt_port }}"
+          >
+        </div>
+        <div class="form-row">
+          <label for="canary_topic_prefix">
+            Canary MQTT topic prefix
+            <span class="field-hint">Expects "&lt;prefix&gt;/event", "&lt;prefix&gt;/state" and "&lt;prefix&gt;/status" underneath it.</span>
+          </label>
+          <input
+            type="text"
+            id="canary_topic_prefix"
+            name="canary_topic_prefix"
+            value="{{ canary_topic_prefix }}"
+            placeholder="canary/glasses"
+          >
+        </div>
+        <button type="submit">Save settings</button>
+      </form>
+    </details>
 
   </main>
 </body>

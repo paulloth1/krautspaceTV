@@ -55,6 +55,35 @@ section h2 {
   padding-bottom: 0.5rem;
 }
 
+details.collapsible-section {
+  background: #fff;
+  box-shadow: 1px 1px 15px rgba(0, 0, 0, 0.2);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+details.collapsible-section summary {
+  cursor: pointer;
+}
+
+details.collapsible-section summary h2 {
+  display: inline-block;
+  margin-top: 0;
+  margin-bottom: 0;
+  font-size: 1.2rem;
+  padding-bottom: 0.5rem;
+}
+
+details.collapsible-section[open] summary h2 {
+  border-bottom: 1px solid #999999;
+  display: block;
+  width: 100%;
+}
+
+details.collapsible-section summary + * {
+  margin-top: 1rem;
+}
+
 label {
   display: block;
   font-family: 'Signika', sans-serif;
