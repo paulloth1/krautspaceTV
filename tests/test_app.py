@@ -1,4 +1,4 @@
-from backend.app import ssrf_check
+from backend.app import _canary_config, ssrf_check
 
 
 def test_ssrf_check_rejects_loopback():
@@ -35,3 +35,29 @@ def test_ssrf_check_accepts_public_ip_literal():
 
 def test_ssrf_check_accepts_public_hostname():
     assert ssrf_check("http://example.com/") is None
+
+
+async def test_canary_config_none_when_unconfigured(db_module, monkeypatch):
+    monkeypatch.setattr("backend.app.db", db_module)
+    await db_module.init_db()
+    assert await _canary_config() is None
+
+
+async def test_canary_config_none_when_disabled(db_module, monkeypatch):
+    monkeypatch.setattr("backend.app.db", db_module)
+    await db_module.init_db()
+    await db_module.set_setting("canary_mqtt_host", "127.0.0.1")
+    await db_module.set_setting("canary_enabled", "no")
+    assert await _canary_config() is None
+
+
+async def test_canary_config_present_when_enabled_and_configured(db_module, monkeypatch):
+    monkeypatch.setattr("backend.app.db", db_module)
+    await db_module.init_db()
+    await db_module.set_setting("canary_mqtt_host", "127.0.0.1")
+    await db_module.set_setting("canary_mqtt_port", "1884")
+    await db_module.set_setting("canary_topic_prefix", "my/canary")
+    # canary_enabled deliberately left unset - defaults to "yes"
+    assert await _canary_config() == (
+        "127.0.0.1", 1884, "my/canary/event", "my/canary/state", "my/canary/status"
+    )

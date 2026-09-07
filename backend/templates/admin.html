@@ -232,12 +232,20 @@
           >
         </div>
         <div class="form-row">
-          <label for="canary_mqtt_host">
-            Canary MQTT broker host (IP or hostname)
+          <label for="canary_enabled">
+            Canary alert overlay
             <span class="field-hint">Shows a prominent alert banner at the top of the display while
             smart glasses are detected nearby, and a quieter "offline" warning if the canary itself
-            stops reporting in. Leave blank to disable.</span>
+            stops reporting in. Off skips connecting to the broker entirely, without losing the
+            settings below.</span>
           </label>
+          <select id="canary_enabled" name="canary_enabled">
+            <option value="yes" {% if canary_enabled == "yes" %}selected{% endif %}>On</option>
+            <option value="no" {% if canary_enabled == "no" %}selected{% endif %}>Off</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="canary_mqtt_host">Canary MQTT broker host (IP or hostname)</label>
           <input
             type="text"
             id="canary_mqtt_host"

@@ -184,8 +184,12 @@ CANDY_DARK_CSS = """
 
 
 async def _canary_config() -> canary.CanaryConfig | None:
-    """Settings for canary.canary_listener_loop(), or None if unconfigured.
-    Re-read on every (re)connect attempt, not cached - see that function."""
+    """Settings for canary.canary_listener_loop(), or None if unconfigured or
+    switched off. Re-read on every (re)connect attempt, not cached - see that
+    function - so the toggle also takes effect within CONFIG_RECHECK_INTERVAL
+    of being flipped, not just on a service restart."""
+    if (await db.get_setting("canary_enabled", "yes")) != "yes":
+        return None
     host = (await db.get_setting("canary_mqtt_host", "")).strip()
     if not host:
         return None
@@ -554,6 +558,7 @@ async def admin(request: Request):
     slides = await db.list_slides()
     interval = await db.get_setting("rotation_interval_seconds", "60")
     printer_host = await db.get_setting("printer_host", "")
+    canary_enabled = await db.get_setting("canary_enabled", "yes")
     canary_mqtt_host = await db.get_setting("canary_mqtt_host", "")
     canary_mqtt_port = await db.get_setting("canary_mqtt_port", "1883")
     canary_topic_prefix = await db.get_setting("canary_topic_prefix", "canary/glasses")
@@ -566,6 +571,7 @@ async def admin(request: Request):
             "registry": REGISTRY,
             "rotation_interval": interval,
             "printer_host": printer_host,
+            "canary_enabled": canary_enabled,
             "canary_mqtt_host": canary_mqtt_host,
             "canary_mqtt_port": canary_mqtt_port,
             "canary_topic_prefix": canary_topic_prefix,
@@ -669,6 +675,7 @@ MIN_ROTATION_INTERVAL_SECONDS = 20
 async def update_settings(
     rotation_interval_seconds: str = Form(...),
     printer_host: str = Form(""),
+    canary_enabled: str = Form("yes"),
     canary_mqtt_host: str = Form(""),
     canary_mqtt_port: str = Form("1883"),
     canary_topic_prefix: str = Form("canary/glasses"),
@@ -680,6 +687,7 @@ async def update_settings(
     if value is not None and value >= MIN_ROTATION_INTERVAL_SECONDS:
         await db.set_setting("rotation_interval_seconds", str(value))
     await db.set_setting("printer_host", printer_host.strip())
+    await db.set_setting("canary_enabled", "no" if canary_enabled == "no" else "yes")
     await db.set_setting("canary_mqtt_host", canary_mqtt_host.strip())
     try:
         canary_port = int(canary_mqtt_port)
