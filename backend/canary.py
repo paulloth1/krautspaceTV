@@ -85,7 +85,26 @@ def _decode(payload) -> str:
     return str(payload).strip()
 
 
-async def _listen_once(host: str, port: int, event_topic: str, state_topic: str, status_topic: str) -> None:
+# How often an otherwise-healthy, message-quiet connection checks whether
+# settings have changed underneath it. Retained topics only deliver a fresh
+# message when their value actually changes, so a connection can sit
+# perfectly healthy and idle for a long time - without this, a settings
+# change made while already connected would only take effect whenever the
+# connection *happened* to drop for some unrelated reason, not "shortly
+# after saving", contrary to what an admin editing the settings form would
+# reasonably expect.
+CONFIG_RECHECK_INTERVAL = 30
+
+
+async def _listen_once(
+    host: str,
+    port: int,
+    event_topic: str,
+    state_topic: str,
+    status_topic: str,
+    get_config: Callable[[], Coroutine[None, None, CanaryConfig | None]],
+    config: CanaryConfig,
+) -> None:
     async with aiomqtt.Client(hostname=host, port=port) as client:
         await client.subscribe(event_topic)
         await client.subscribe(state_topic)
@@ -93,7 +112,14 @@ async def _listen_once(host: str, port: int, event_topic: str, state_topic: str,
         # Connected - but a genuinely offline canary's retained `status` LWT
         # only fires once the broker's keepalive gives up on it (~15-25s), so
         # don't claim "online" ourselves until we've actually heard from it.
-        async for message in client.messages:
+        messages = client.messages.__aiter__()
+        while True:
+            try:
+                message = await asyncio.wait_for(messages.__anext__(), timeout=CONFIG_RECHECK_INTERVAL)
+            except asyncio.TimeoutError:
+                if await get_config() != config:
+                    return  # settings changed underneath us - reconnect with the new ones
+                continue
             topic = str(message.topic)
             text = _decode(message.payload)
             if topic == status_topic:
@@ -106,7 +132,10 @@ async def _listen_once(host: str, port: int, event_topic: str, state_topic: str,
 
 async def canary_listener_loop(get_config: Callable[[], Coroutine[None, None, CanaryConfig | None]]) -> None:
     """`get_config` is re-awaited on every (re)connect attempt (not read once
-    at startup) so a settings change takes effect without a service restart."""
+    at startup) so a settings change takes effect without a service restart -
+    including one made mid-connection, via _listen_once's periodic recheck
+    above, since retained-topic connections can otherwise sit healthy and
+    idle indefinitely without ever naturally reconnecting on their own."""
     while True:
         config = await get_config()
         if config is None:
@@ -116,7 +145,7 @@ async def canary_listener_loop(get_config: Callable[[], Coroutine[None, None, Ca
         await STATE.set_configured(True)
         host, port, event_topic, state_topic, status_topic = config
         try:
-            await _listen_once(host, port, event_topic, state_topic, status_topic)
+            await _listen_once(host, port, event_topic, state_topic, status_topic, get_config, config)
         except Exception:
             logger.exception("canary_listener_loop: connection lost, retrying")
             # Can't reach the broker either way, so from the display's
