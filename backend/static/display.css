@@ -363,6 +363,55 @@ table.departures td.time {
   opacity: 1;
 }
 
+/* Canary overlay: drawn top-center over whatever slide is showing,
+   independent of rotation (see display.html's pollCanary). Unlike the
+   printer overlay this is a security alert, not a status readout - it
+   fades in fast and, in its alert state, pulses to actually grab attention
+   from across the room. */
+.canary-overlay {
+  position: absolute;
+  top: 1.5vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 999;
+  max-width: 70vw;
+  padding: 1vh 2vw;
+  border-radius: 0.5vw;
+  color: #fff;
+  font-weight: 700;
+  font-size: 2vw;
+  text-align: center;
+  text-shadow: 0 0.2vh 0.4vh rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.canary-overlay.visible {
+  opacity: 1;
+}
+
+.canary-overlay.canary-alert {
+  background: #dc2626;
+  animation: canary-pulse 1.4s ease-in-out infinite;
+}
+
+.canary-overlay.canary-offline {
+  background: rgba(90, 90, 90, 0.85);
+  font-size: 1.5vw;
+}
+
+@keyframes canary-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+  50% { box-shadow: 0 0 1.5vw 1vw rgba(220, 38, 38, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canary-overlay.canary-alert {
+    animation: none;
+  }
+}
+
 /* Covers the page from first paint (so the "Loading..." placeholder is never
    seen) until the first real slide has faded in, so the boot splash reads as
    one continuous screen all the way from plymouth to the first real slide.

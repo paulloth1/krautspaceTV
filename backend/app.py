@@ -15,7 +15,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from markupsafe import escape
 
-from . import db, system_info
+from . import canary, db, system_info
+from .canary import canary_listener_loop
 from .gpx import fetch_track
 from .preview import get_preview_png
 from .printer import get_printer_status
@@ -182,6 +183,20 @@ CANDY_DARK_CSS = """
 """
 
 
+async def _canary_config() -> canary.CanaryConfig | None:
+    """Settings for canary.canary_listener_loop(), or None if unconfigured.
+    Re-read on every (re)connect attempt, not cached - see that function."""
+    host = (await db.get_setting("canary_mqtt_host", "")).strip()
+    if not host:
+        return None
+    try:
+        port = int(await db.get_setting("canary_mqtt_port", "1883"))
+    except ValueError:
+        port = 1883
+    prefix = (await db.get_setting("canary_topic_prefix", "canary/glasses")).strip() or "canary/glasses"
+    return (host, port, f"{prefix}/event", f"{prefix}/state", f"{prefix}/status")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await db.init_db()
@@ -190,9 +205,12 @@ async def lifespan(app: FastAPI):
         if boot_id and boot_id != await db.get_setting("last_boot_id"):
             await db.set_setting("rotation_interval_seconds", "60")
             await db.set_setting("last_boot_id", boot_id)
-    task = asyncio.create_task(rotation_loop()) if IS_ROTATION_OWNER else None
+    tasks = []
+    if IS_ROTATION_OWNER:
+        tasks.append(asyncio.create_task(rotation_loop()))
+        tasks.append(asyncio.create_task(canary_listener_loop(_canary_config)))
     yield
-    if task:
+    for task in tasks:
         task.cancel()
 
 
@@ -427,6 +445,27 @@ async def system_status():
     return await system_info.get_stats()
 
 
+@app.get("/api/canary/status")
+async def canary_status():
+    """Polled by the display's canary overlay (see display.html). The
+    listener (canary.canary_listener_loop) only runs in the rotation-owner
+    process, so this only reflects reality there - fine, since /display is
+    only ever served from that same instance (127.0.0.1:8081).
+
+    Prefers "offline" over silence whenever the canary's own online/offline
+    status isn't confirmed (including right at startup, before the first
+    status message arrives) - a canary that's merely quiet and one that's
+    dead and unheard-from must never look the same on screen."""
+    snap = await canary.STATE.snapshot()
+    if not snap["configured"]:
+        return {"visible": False}
+    if snap["online"] is not True:
+        return {"visible": True, "level": "offline", "text": "CANARY OFFLINE — not watching"}
+    if snap["present"]:
+        return {"visible": True, "level": "alert", "text": snap["event"] or "Glasses detected"}
+    return {"visible": False}
+
+
 @app.get("/api/printer/status")
 async def printer_status():
     """Polled by the display's printer overlay (see display.html). Returns
@@ -515,6 +554,9 @@ async def admin(request: Request):
     slides = await db.list_slides()
     interval = await db.get_setting("rotation_interval_seconds", "60")
     printer_host = await db.get_setting("printer_host", "")
+    canary_mqtt_host = await db.get_setting("canary_mqtt_host", "")
+    canary_mqtt_port = await db.get_setting("canary_mqtt_port", "1883")
+    canary_topic_prefix = await db.get_setting("canary_topic_prefix", "canary/glasses")
     slide_names = {slide["id"]: slide["name"] for slide in slides}
     return templates.TemplateResponse(
         request,
@@ -524,6 +566,9 @@ async def admin(request: Request):
             "registry": REGISTRY,
             "rotation_interval": interval,
             "printer_host": printer_host,
+            "canary_mqtt_host": canary_mqtt_host,
+            "canary_mqtt_port": canary_mqtt_port,
+            "canary_topic_prefix": canary_topic_prefix,
             "slide_names_json": json.dumps(slide_names),
         },
     )
@@ -621,7 +666,13 @@ MIN_ROTATION_INTERVAL_SECONDS = 20
 
 
 @app.post("/admin/settings")
-async def update_settings(rotation_interval_seconds: str = Form(...), printer_host: str = Form("")):
+async def update_settings(
+    rotation_interval_seconds: str = Form(...),
+    printer_host: str = Form(""),
+    canary_mqtt_host: str = Form(""),
+    canary_mqtt_port: str = Form("1883"),
+    canary_topic_prefix: str = Form("canary/glasses"),
+):
     try:
         value = int(rotation_interval_seconds)
     except ValueError:
@@ -629,4 +680,11 @@ async def update_settings(rotation_interval_seconds: str = Form(...), printer_ho
     if value is not None and value >= MIN_ROTATION_INTERVAL_SECONDS:
         await db.set_setting("rotation_interval_seconds", str(value))
     await db.set_setting("printer_host", printer_host.strip())
+    await db.set_setting("canary_mqtt_host", canary_mqtt_host.strip())
+    try:
+        canary_port = int(canary_mqtt_port)
+    except ValueError:
+        canary_port = 1883
+    await db.set_setting("canary_mqtt_port", str(canary_port))
+    await db.set_setting("canary_topic_prefix", canary_topic_prefix.strip() or "canary/glasses")
     return RedirectResponse("/", status_code=303)

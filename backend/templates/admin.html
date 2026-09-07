@@ -98,6 +98,43 @@
             placeholder="192.168.1.50"
           >
         </div>
+        <div class="form-row">
+          <label for="canary_mqtt_host">
+            Canary MQTT broker host (IP or hostname)
+            <span class="field-hint">Shows a prominent alert banner at the top of the display while
+            smart glasses are detected nearby, and a quieter "offline" warning if the canary itself
+            stops reporting in. Leave blank to disable.</span>
+          </label>
+          <input
+            type="text"
+            id="canary_mqtt_host"
+            name="canary_mqtt_host"
+            value="{{ canary_mqtt_host }}"
+            placeholder="192.168.1.50"
+          >
+        </div>
+        <div class="form-row">
+          <label for="canary_mqtt_port">Canary MQTT broker port</label>
+          <input
+            type="number"
+            id="canary_mqtt_port"
+            name="canary_mqtt_port"
+            value="{{ canary_mqtt_port }}"
+          >
+        </div>
+        <div class="form-row">
+          <label for="canary_topic_prefix">
+            Canary MQTT topic prefix
+            <span class="field-hint">Expects "&lt;prefix&gt;/event", "&lt;prefix&gt;/state" and "&lt;prefix&gt;/status" underneath it.</span>
+          </label>
+          <input
+            type="text"
+            id="canary_topic_prefix"
+            name="canary_topic_prefix"
+            value="{{ canary_topic_prefix }}"
+            placeholder="canary/glasses"
+          >
+        </div>
         <button type="submit">Save settings</button>
       </form>
     </section>

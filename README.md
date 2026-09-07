@@ -97,6 +97,42 @@ stalls visibly on DOM-parsing a multi-thousand-point GPX file.
   [ha-creality-lan](https://github.com/rathlinus/ha-creality-lan) Home
   Assistant integration.
 
+## Canary (smart-glasses detector) alert overlay
+
+- If a "Canary MQTT broker host" is set in "Rotation settings", the display
+  shows a banner across the top of the screen — independent of slide
+  rotation, on top of whatever slide is showing — driven by a live MQTT
+  subscription the backend keeps open for the process lifetime (see
+  `backend/canary.py`), not a per-poll fetch like the printer overlay
+  above. Leave the field blank to disable it.
+- Expects three topics under a configurable prefix (default
+  `canary/glasses`):
+  - `<prefix>/event` — transient, not retained: a display-ready plain-text
+    message each time something changes (e.g. `Glasses detected: Meta
+    Ray-Ban (-49 dBm)`). Shown verbatim, budget ~60 characters.
+  - `<prefix>/state` — retained `present`/`clear`. Drives whether the
+    banner shows at all: `present` shows a pulsing red alert (using the
+    latest `event` text, or a generic fallback if none has arrived yet
+    this run); `clear` hides the banner entirely, same as the printer
+    overlay staying hidden when nothing's printing.
+  - `<prefix>/status` — retained `online`/`offline`, expected to be backed
+    by the canary's own MQTT Last Will so the broker announces `offline`
+    on its own if the canary loses power or crashes (allow ~15–25s for
+    this, per the broker's keepalive). Anything other than a confirmed
+    `online` — including right at startup, before a status message has
+    arrived at all — shows a muted grey "CANARY OFFLINE" banner instead of
+    silently doing nothing, since a quiet canary and a dead, unheard-from
+    one must never look the same on screen.
+- A local broker for this (and for the `api_status` slide's MQTT source,
+  see above) can be set up with `deploy/mosquitto-krautspace.conf` —
+  anonymous and LAN-reachable, the same "intentionally open" call as the
+  admin UI itself:
+  ```sh
+  sudo apt install mosquitto mosquitto-clients
+  sudo cp deploy/mosquitto-krautspace.conf /etc/mosquitto/conf.d/krautspace.conf
+  sudo systemctl restart mosquitto
+  ```
+
 ## Known limitations
 
 - Pi 2's weak CPU + 900MB RAM means any sufficiently JS-heavy embedded page

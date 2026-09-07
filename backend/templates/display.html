@@ -16,6 +16,7 @@
     <span id="printer-overlay-text"></span>
     <div id="printer-overlay-bar" class="printer-overlay-bar"><div id="printer-overlay-bar-fill" class="printer-overlay-bar-fill"></div></div>
   </div>
+  <div id="canary-overlay" class="canary-overlay"></div>
   <div id="boot-splash">
     <div class="boot-splash-wordmark">krautspace<span class="tv">TV</span></div>
     <div class="boot-splash-bar"><div class="boot-splash-bar-fill"></div></div>
@@ -200,6 +201,39 @@
 
       pollPrinter();
       setInterval(pollPrinter, PRINTER_POLL_MS);
+
+      // Canary overlay: independent of slide rotation, drawn top-center over
+      // whatever slide is showing. Polled faster than the printer overlay -
+      // this is a security alert, not a progress readout, and the backend
+      // just returns its own already-live in-memory state (see
+      // backend/canary.py), not a fresh network round-trip per poll, so
+      // polling this often costs nothing extra.
+      var CANARY_POLL_MS = 3000;
+      var canaryOverlay = document.getElementById("canary-overlay");
+
+      function pollCanary() {
+        fetch("/api/canary/status", { cache: "no-store" })
+          .then(function (resp) {
+            if (!resp.ok) throw new Error("bad response");
+            return resp.json();
+          })
+          .then(function (data) {
+            if (!data || !data.visible) {
+              canaryOverlay.classList.remove("visible", "canary-alert", "canary-offline");
+              return;
+            }
+            canaryOverlay.textContent = data.text || "";
+            canaryOverlay.classList.toggle("canary-alert", data.level === "alert");
+            canaryOverlay.classList.toggle("canary-offline", data.level !== "alert");
+            canaryOverlay.classList.add("visible");
+          })
+          .catch(function () {
+            canaryOverlay.classList.remove("visible", "canary-alert", "canary-offline");
+          });
+      }
+
+      pollCanary();
+      setInterval(pollCanary, CANARY_POLL_MS);
     })();
   </script>
 </body>
