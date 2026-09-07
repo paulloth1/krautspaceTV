@@ -105,7 +105,10 @@ async def _listen_once(
     get_config: Callable[[], Coroutine[None, None, CanaryConfig | None]],
     config: CanaryConfig,
 ) -> None:
-    async with aiomqtt.Client(hostname=host, port=port) as client:
+    # A fixed, identifiable client id (rather than aiomqtt's default random
+    # "auto-..." one, indistinguishable in the broker's log from any other
+    # anonymous client, including a plain mosquitto_pub/sub CLI invocation).
+    async with aiomqtt.Client(hostname=host, port=port, identifier="krautspacetv-canary") as client:
         await client.subscribe(event_topic)
         await client.subscribe(state_topic)
         await client.subscribe(status_topic)
