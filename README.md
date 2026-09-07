@@ -129,8 +129,9 @@ stalls visibly on DOM-parsing a multi-thousand-point GPX file.
 - **Slide types** (`backend/slides/`): pluggable, each with `is_available()`
   and `render()` — `media` (image/video/iframe URL), `webcam` (MJPEG stream
   availability check), `mastodon` (hashtag timeline), `matrix` (room
-  messages), `train` (generic departure-board JSON API), `api_status` (JSON
-  field read from an API, shown as a true/false label), `rss` (RSS/Atom feed,
+  messages), `train` (generic departure-board JSON API), `api_status` (a
+  JSON field read from an HTTP API or an MQTT topic, shown as a true/false
+  label), `rss` (RSS/Atom feed,
   with Mastodon-tag-RSS-specific quirks like author/image extraction), `gpx`
   (a GPS track drawn on a Leaflet map, see below).
   `render()` fetching is factored through `backend/slides/_http.py`'s shared
