@@ -9,13 +9,214 @@
 <body>
   <header class="topbar">
     <h1>Signage Admin</h1>
+    <div class="header-actions">
+      <span class="live-pill"><span class="live-dot"></span> <span id="live-uptime">Live</span></span>
+
+      <details class="menu">
+        <summary class="icon-btn" title="Status &amp; settings">&#9881;</summary>
+        <div class="menu-panel">
+          <h3 class="menu-heading">Status</h3>
+          <div class="stat-tiles">
+            <div class="stat-tile">
+              <span class="tile-label">CPU temp</span>
+              <span class="tile-value" id="stat-cpu-temp">&hellip;</span>
+            </div>
+            <div class="stat-tile">
+              <span class="tile-label">Load avg (1/5/15m)</span>
+              <span class="tile-value" id="stat-load-avg" style="font-size:0.95rem;">&hellip;</span>
+            </div>
+            <div class="stat-tile">
+              <span class="tile-label">Memory</span>
+              <span class="tile-value" id="stat-memory">&hellip;</span>
+            </div>
+            <div class="stat-tile">
+              <span class="tile-label">Core voltage</span>
+              <span class="tile-value" id="stat-core-voltage">&hellip;</span>
+            </div>
+            <div class="stat-tile">
+              <span class="tile-label">Uptime</span>
+              <span class="tile-value" id="stat-uptime">&hellip;</span>
+            </div>
+            <div class="stat-tile" id="stat-power-tile">
+              <span class="tile-label">Power</span>
+              <span class="tile-value" id="stat-power">&hellip;</span>
+            </div>
+          </div>
+          <div class="status-line">
+            <span id="stat-ip">&hellip;</span>
+            <span id="stat-power-history">&hellip;</span>
+          </div>
+          <script>
+            (function () {
+              function formatUptime(seconds) {
+                var d = Math.floor(seconds / 86400);
+                var h = Math.floor((seconds % 86400) / 3600);
+                var m = Math.floor((seconds % 3600) / 60);
+                return d + "d " + h + "h " + m + "m";
+              }
+
+              var elCpu = document.getElementById("stat-cpu-temp");
+              var elLoad = document.getElementById("stat-load-avg");
+              var elMemory = document.getElementById("stat-memory");
+              var elVoltage = document.getElementById("stat-core-voltage");
+              var elUptime = document.getElementById("stat-uptime");
+              var elPowerTile = document.getElementById("stat-power-tile");
+              var elPower = document.getElementById("stat-power");
+              var elIp = document.getElementById("stat-ip");
+              var elPowerHistory = document.getElementById("stat-power-history");
+              var elLiveUptime = document.getElementById("live-uptime");
+
+              function refresh() {
+                fetch("/api/system/status", { cache: "no-store" })
+                  .then(function (resp) { return resp.json(); })
+                  .then(function (data) {
+                    var t = data.throttled || {};
+                    var nowIssues = [];
+                    if (t.undervoltage_now) nowIssues.push("undervoltage");
+                    if (t.freq_capped_now) nowIssues.push("frequency capped");
+                    if (t.throttled_now) nowIssues.push("throttled");
+                    if (t.temp_limit_now) nowIssues.push("temp limit");
+                    var everIssues = [];
+                    if (t.undervoltage_since_boot) everIssues.push("undervoltage");
+                    if (t.throttled_since_boot) everIssues.push("throttled");
+
+                    elCpu.textContent = data.cpu_temp_c != null ? data.cpu_temp_c.toFixed(1) + " °C" : "n/a";
+                    elLoad.textContent = data.load_avg["1m"].toFixed(2) + " / " + data.load_avg["5m"].toFixed(2) + " / " + data.load_avg["15m"].toFixed(2);
+                    elMemory.textContent = data.memory.used_mb + " / " + data.memory.total_mb + " MB";
+                    elVoltage.textContent = data.core_voltage_v != null ? data.core_voltage_v.toFixed(4) + " V" : "n/a";
+
+                    var uptimeText = formatUptime(data.uptime_seconds);
+                    elUptime.textContent = uptimeText;
+                    if (elLiveUptime) elLiveUptime.textContent = "up " + uptimeText;
+
+                    elPower.textContent = nowIssues.length ? nowIssues.join(", ") : "OK";
+                    elPower.classList.toggle("ok", nowIssues.length === 0);
+                    elPowerTile.classList.toggle("warn", nowIssues.length > 0);
+
+                    elIp.textContent = (data.ip_addresses.join(", ") || "unknown") + " · " + data.hostname;
+                    elPowerHistory.textContent = everIssues.length
+                      ? "Power issues since boot: " + everIssues.join(", ")
+                      : "No power issues since boot";
+                  })
+                  .catch(function () {});
+              }
+
+              refresh();
+              setInterval(refresh, 10000);
+            })();
+          </script>
+
+          <div class="menu-divider"></div>
+
+          <h3 class="menu-heading">Settings</h3>
+          <form method="post" action="/admin/settings">
+            <div class="settings-group">
+              <h4>Rotation</h4>
+              <div class="form-row">
+                <label for="rotation_interval_seconds">Rotation interval (seconds)</label>
+                <input
+                  type="number"
+                  id="rotation_interval_seconds"
+                  name="rotation_interval_seconds"
+                  min="20"
+                  value="{{ rotation_interval }}"
+                  required
+                >
+                <span class="field-hint">Minimum 20s &mdash; shorter intervals can freeze iframe slides before they finish loading.</span>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h4>3D printer</h4>
+              <div class="form-row">
+                <label for="printer_host">Printer host (IP or hostname)</label>
+                <input
+                  type="text"
+                  id="printer_host"
+                  name="printer_host"
+                  value="{{ printer_host }}"
+                  placeholder="192.168.1.50"
+                >
+                <span class="field-hint">Creality K1-family printer on the local network &mdash; shows a small "printing" overlay while it's running. Leave blank to disable.</span>
+              </div>
+            </div>
+
+            <div class="settings-group">
+              <h4>Canary alert</h4>
+              <div class="form-row">
+                <div class="toggle-row">
+                  <label for="canary_enabled_toggle">Alert overlay</label>
+                  <label class="switch">
+                    <input type="checkbox" id="canary_enabled_toggle" {% if canary_enabled == "yes" %}checked{% endif %}>
+                    <span class="switch-track"><span class="switch-thumb"></span></span>
+                  </label>
+                  <input type="hidden" id="canary_enabled" name="canary_enabled" value="{{ canary_enabled }}">
+                </div>
+                <span class="field-hint">Prominent banner when smart glasses are detected nearby, and a quieter warning if the canary stops reporting in. Off skips connecting to the broker entirely, without losing the settings below.</span>
+              </div>
+              <div class="form-row">
+                <label for="canary_mqtt_host">MQTT broker host</label>
+                <input
+                  type="text"
+                  id="canary_mqtt_host"
+                  name="canary_mqtt_host"
+                  value="{{ canary_mqtt_host }}"
+                  placeholder="192.168.1.50"
+                >
+              </div>
+              <div class="form-row">
+                <label for="canary_mqtt_port">MQTT broker port</label>
+                <input
+                  type="number"
+                  id="canary_mqtt_port"
+                  name="canary_mqtt_port"
+                  value="{{ canary_mqtt_port }}"
+                >
+              </div>
+              <div class="form-row">
+                <label for="canary_topic_prefix">MQTT topic prefix</label>
+                <input
+                  type="text"
+                  id="canary_topic_prefix"
+                  name="canary_topic_prefix"
+                  value="{{ canary_topic_prefix }}"
+                  placeholder="canary/glasses"
+                >
+                <span class="field-hint">Expects "&lt;prefix&gt;/event", "&lt;prefix&gt;/state" and "&lt;prefix&gt;/status" underneath it.</span>
+              </div>
+            </div>
+
+            <div class="settings-actions">
+              <button type="submit">Save settings</button>
+            </div>
+          </form>
+          <script>
+            (function () {
+              var toggle = document.getElementById("canary_enabled_toggle");
+              var hidden = document.getElementById("canary_enabled");
+              toggle.addEventListener("change", function () {
+                hidden.value = toggle.checked ? "yes" : "no";
+              });
+            })();
+          </script>
+        </div>
+      </details>
+    </div>
   </header>
+
   <main>
 
     <section>
-      <h2>Live preview</h2>
-      <img id="preview" class="preview-image" src="/api/preview.png" alt="HDMI output preview">
-      <p id="now-displaying" class="now-displaying">Now displaying: &hellip;</p>
+      <div class="card-head">
+        <h2>Live preview</h2>
+      </div>
+      <div class="preview-shell">
+        <img id="preview" src="/api/preview.png" alt="HDMI output preview">
+      </div>
+      <div class="now-displaying-row">
+        <p id="now-displaying" class="now-displaying">Now displaying: &hellip;</p>
+        <div class="rotation-note">rotates every {{ rotation_interval }}s</div>
+      </div>
       <script>
         (function () {
           var img = document.getElementById("preview");
@@ -69,7 +270,10 @@
     </section>
 
     <section>
-      <h2>Slides</h2>
+      <div class="card-head">
+        <h2>Slides</h2>
+        <span class="card-sub">{{ slides|length }} configured &middot; {{ slides|selectattr("enabled")|list|length }} enabled</span>
+      </div>
       {% if slides %}
       <table class="slides">
         <thead>
@@ -79,15 +283,15 @@
             <th>Type</th>
             <th>Status</th>
             <th>Time left</th>
-            <th>Actions</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {% for slide in slides %}
           <tr data-slide-id="{{ slide.id }}">
             <td class="slide-id" title="slide id {{ slide.id }}">{{ loop.index }}</td>
-            <td>{{ slide.name }}</td>
-            <td>{{ registry[slide.type].label if slide.type in registry else slide.type }}</td>
+            <td class="slide-name">{{ slide.name }}</td>
+            <td class="slide-type">{{ registry[slide.type].label if slide.type in registry else slide.type }}</td>
             <td>
               {% if slide.enabled %}
               <span class="badge badge-enabled">Enabled</span>
@@ -98,31 +302,33 @@
             <td class="time-left">&mdash;</td>
             <td>
               <div class="row-actions">
-                <a class="button" href="/admin/slides/{{ slide.id }}/edit">Edit</a>
+                <a class="icon-btn" href="/admin/slides/{{ slide.id }}/edit" title="Edit">&#9998;</a>
 
                 <form method="post" action="/admin/slides/{{ slide.id }}/view-now">
-                  <button type="submit" class="secondary">View now</button>
+                  <button type="submit" class="icon-btn" title="View now">&#9654;</button>
                 </form>
 
                 <form method="post" action="/admin/slides/{{ slide.id }}/toggle">
-                  <button type="submit" class="secondary">
-                    {{ "Disable" if slide.enabled else "Enable" }}
-                  </button>
+                  <button type="submit" class="icon-btn" title="{{ 'Disable' if slide.enabled else 'Enable' }}">&#9211;</button>
                 </form>
+
+                <span class="divider"></span>
 
                 <form method="post" action="/admin/slides/{{ slide.id }}/move">
                   <input type="hidden" name="direction" value="up">
-                  <button type="submit" class="secondary">Up</button>
+                  <button type="submit" class="icon-btn" title="Move up">&#8593;</button>
                 </form>
 
                 <form method="post" action="/admin/slides/{{ slide.id }}/move">
                   <input type="hidden" name="direction" value="down">
-                  <button type="submit" class="secondary">Down</button>
+                  <button type="submit" class="icon-btn" title="Move down">&#8595;</button>
                 </form>
+
+                <span class="divider"></span>
 
                 <form method="post" action="/admin/slides/{{ slide.id }}/delete"
                       onsubmit="return confirm('Delete slide &quot;{{ slide.name }}&quot;?');">
-                  <button type="submit" class="danger">Delete</button>
+                  <button type="submit" class="icon-btn danger" title="Delete">&#10005;</button>
                 </form>
               </div>
             </td>
@@ -133,152 +339,17 @@
       {% else %}
       <p class="empty-note">No slides configured yet. Add one below.</p>
       {% endif %}
-    </section>
 
-    <section>
-      <h2>Add slide</h2>
-      <form class="add-slide-form" method="get" action="/admin/slides/new">
-        <div class="form-row">
-          <label for="type">Slide type</label>
-          <select id="type" name="type">
-            {% for key, slide_type in registry.items() %}
-            <option value="{{ key }}">{{ slide_type.label }}</option>
-            {% endfor %}
-          </select>
-        </div>
+      <form class="add-slide-row" method="get" action="/admin/slides/new">
+        <label for="type">Add slide</label>
+        <select id="type" name="type">
+          {% for key, slide_type in registry.items() %}
+          <option value="{{ key }}">{{ slide_type.label }}</option>
+          {% endfor %}
+        </select>
         <button type="submit">Add</button>
       </form>
     </section>
-
-    <details class="collapsible-section">
-      <summary><h2>System status</h2></summary>
-      <dl id="system-status" class="stat-grid"><dt>Loading&hellip;</dt><dd></dd></dl>
-      <script>
-        (function () {
-          var el = document.getElementById("system-status");
-
-          function formatUptime(seconds) {
-            var d = Math.floor(seconds / 86400);
-            var h = Math.floor((seconds % 86400) / 3600);
-            var m = Math.floor((seconds % 3600) / 60);
-            return d + "d " + h + "h " + m + "m";
-          }
-
-          function refresh() {
-            fetch("/api/system/status", { cache: "no-store" })
-              .then(function (resp) { return resp.json(); })
-              .then(function (data) {
-                var t = data.throttled || {};
-                var nowIssues = [];
-                if (t.undervoltage_now) nowIssues.push("undervoltage");
-                if (t.freq_capped_now) nowIssues.push("frequency capped");
-                if (t.throttled_now) nowIssues.push("throttled");
-                if (t.temp_limit_now) nowIssues.push("temp limit");
-                var everIssues = [];
-                if (t.undervoltage_since_boot) everIssues.push("undervoltage");
-                if (t.throttled_since_boot) everIssues.push("throttled");
-                var rows = [
-                  ["IP address(es)", data.ip_addresses.join(", ") || "unknown"],
-                  ["Hostname", data.hostname],
-                  ["CPU temp", data.cpu_temp_c != null ? data.cpu_temp_c.toFixed(1) + " °C" : "n/a"],
-                  ["Core voltage", data.core_voltage_v != null ? data.core_voltage_v.toFixed(4) + " V" : "n/a"],
-                  ["Load average", data.load_avg["1m"].toFixed(2) + " / " + data.load_avg["5m"].toFixed(2) + " / " + data.load_avg["15m"].toFixed(2)],
-                  ["Memory", data.memory.used_mb + " / " + data.memory.total_mb + " MB (" + data.memory.percent + "%)"],
-                  ["Uptime", formatUptime(data.uptime_seconds)],
-                  ["Power right now", nowIssues.length ? nowIssues.join(", ") : "OK"],
-                  ["Power issues since boot", everIssues.length ? everIssues.join(", ") : "none"],
-                ];
-                el.innerHTML = rows.map(function (r) {
-                  return "<dt>" + r[0] + "</dt><dd>" + r[1] + "</dd>";
-                }).join("");
-              })
-              .catch(function () {});
-          }
-
-          refresh();
-          setInterval(refresh, 10000);
-        })();
-      </script>
-    </details>
-
-    <details class="collapsible-section">
-      <summary><h2>Rotation settings</h2></summary>
-      <form method="post" action="/admin/settings">
-        <div class="form-row">
-          <label for="rotation_interval_seconds">
-            Rotation interval (seconds)
-            <span class="field-hint">minimum 20s &mdash; shorter intervals can freeze iframe slides before they finish loading</span>
-          </label>
-          <input
-            type="number"
-            id="rotation_interval_seconds"
-            name="rotation_interval_seconds"
-            min="20"
-            value="{{ rotation_interval }}"
-            required
-          >
-        </div>
-        <div class="form-row">
-          <label for="printer_host">
-            3D printer host (IP or hostname)
-            <span class="field-hint">Creality K1-family printer on the local network &mdash; shows a small "printing" overlay on the display while it's running. Leave blank to disable.</span>
-          </label>
-          <input
-            type="text"
-            id="printer_host"
-            name="printer_host"
-            value="{{ printer_host }}"
-            placeholder="192.168.1.50"
-          >
-        </div>
-        <div class="form-row">
-          <label for="canary_enabled">
-            Canary alert overlay
-            <span class="field-hint">Shows a prominent alert banner at the top of the display while
-            smart glasses are detected nearby, and a quieter "offline" warning if the canary itself
-            stops reporting in. Off skips connecting to the broker entirely, without losing the
-            settings below.</span>
-          </label>
-          <select id="canary_enabled" name="canary_enabled">
-            <option value="yes" {% if canary_enabled == "yes" %}selected{% endif %}>On</option>
-            <option value="no" {% if canary_enabled == "no" %}selected{% endif %}>Off</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="canary_mqtt_host">Canary MQTT broker host (IP or hostname)</label>
-          <input
-            type="text"
-            id="canary_mqtt_host"
-            name="canary_mqtt_host"
-            value="{{ canary_mqtt_host }}"
-            placeholder="192.168.1.50"
-          >
-        </div>
-        <div class="form-row">
-          <label for="canary_mqtt_port">Canary MQTT broker port</label>
-          <input
-            type="number"
-            id="canary_mqtt_port"
-            name="canary_mqtt_port"
-            value="{{ canary_mqtt_port }}"
-          >
-        </div>
-        <div class="form-row">
-          <label for="canary_topic_prefix">
-            Canary MQTT topic prefix
-            <span class="field-hint">Expects "&lt;prefix&gt;/event", "&lt;prefix&gt;/state" and "&lt;prefix&gt;/status" underneath it.</span>
-          </label>
-          <input
-            type="text"
-            id="canary_topic_prefix"
-            name="canary_topic_prefix"
-            value="{{ canary_topic_prefix }}"
-            placeholder="canary/glasses"
-          >
-        </div>
-        <button type="submit">Save settings</button>
-      </form>
-    </details>
 
   </main>
 </body>
