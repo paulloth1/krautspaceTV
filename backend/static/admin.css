@@ -466,16 +466,6 @@ button, .btn, input[type="submit"] {
 button:hover, .btn:hover, input[type="submit"]:hover { filter: brightness(0.85); }
 button:active, .btn:active { transform: translateY(1px); }
 
-button.secondary {
-  background: var(--surface-raised);
-  color: var(--ink);
-  border: 1px solid var(--border-strong);
-}
-
-button.secondary:hover { background: var(--surface); filter: none; border-color: var(--ink-dim); }
-
-button.danger { background: var(--danger); color: var(--danger-ink); }
-
 /* icon buttons override the base button/anchor look above */
 .icon-btn, .icon-btn:hover {
   padding: 0;
