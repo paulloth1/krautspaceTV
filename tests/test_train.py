@@ -83,6 +83,31 @@ def test_render_row_delayed_minor_and_major():
     assert "+27" in major
 
 
+def test_render_row_delayed_shows_actual_time_as_headline():
+    # scheduledTime 08:05, actual `time` 08:10 (delay 5)
+    html = _render_row(
+        {
+            "train": "Bus 1",
+            "destination": "X",
+            "scheduledTime": 1788242700,
+            "time": 1788243000,
+            "delay": 5,
+        }
+    )
+    # the real time is the prominent figure, the timetabled one is struck beneath
+    assert '<span class="actual">08:10</span>' in html
+    assert '<span class="sched-was">08:05</span>' in html
+    assert '<span class="sched">' not in html  # not the plain on-time treatment
+
+
+def test_render_row_on_time_shows_single_plain_time():
+    html = _render_row(
+        {"train": "Bus 1", "destination": "X", "scheduledTime": 1788242700, "time": 1788242700, "delay": 0}
+    )
+    assert '<span class="sched">08:05</span>' in html
+    assert "actual" not in html and "sched-was" not in html
+
+
 def test_render_row_cancelled():
     html = _render_row(
         {

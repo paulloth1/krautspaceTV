@@ -84,9 +84,12 @@ def _render_row(dep: dict) -> str:
     cancelled = bool(dep.get("isCancelled"))
     delay = _int_or_none(dep.get("delay"))
 
-    # Show the timetabled time as the stable reference (a real board keeps
-    # the scheduled figure and adds "+N" rather than silently sliding the
-    # number), falling back to `time` for APIs that only give the one field.
+    # `time` is the real, delay-adjusted departure (already computed by the
+    # API); `scheduledTime` is the timetabled one. Show the actual time as
+    # the figure you read - no mental "+N" arithmetic - and keep the
+    # scheduled time struck through beneath it when they differ, so which is
+    # which is never in doubt. Either field alone is fine for a minimal API.
+    actual = _format_time(dep.get("time") if dep.get("time") is not None else dep.get("scheduledTime"))
     sched = _format_time(dep.get("scheduledTime") if dep.get("scheduledTime") is not None else dep.get("time"))
 
     platform = str(dep.get("platform") or "").strip()
@@ -105,9 +108,16 @@ def _render_row(dep: dict) -> str:
     elif delay and delay >= 1:
         row_classes.append("dep-late")
 
-    time_cell = f'<span class="sched">{escape(sched)}</span>'
-    if delay and delay >= 1 and not cancelled:
-        time_cell += f'<span class="delay">+{delay}</span>'
+    if cancelled:
+        time_cell = f'<span class="sched">{escape(sched)}</span>'
+    elif delay and delay >= 1:
+        time_cell = (
+            f'<span class="actual">{escape(actual)}</span>'
+            f'<span class="delay">+{delay}</span>'
+            f'<span class="sched-was">{escape(sched)}</span>'
+        )
+    else:
+        time_cell = f'<span class="sched">{escape(actual)}</span>'
 
     dest_cell = f'<span class="dest">{escape(destination)}</span>'
     if via_stops:

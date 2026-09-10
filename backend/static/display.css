@@ -216,7 +216,12 @@ th.dep-time, td.dep-time {
   white-space: nowrap;
 }
 
-td.dep-time .sched {
+/* .sched is the plain figure shown when a departure is on time (or cancelled):
+   here it *is* the time you act on. .actual is the real, delay-adjusted time
+   shown when late; .sched-was is the timetabled time it slipped from,
+   struck through beneath it. */
+td.dep-time .sched,
+td.dep-time .actual {
   font-weight: 700;
 }
 
@@ -230,10 +235,20 @@ td.dep-time .delay {
   font-weight: 700;
 }
 
+td.dep-time .sched-was {
+  display: block;
+  margin-top: 0.2vh;
+  font-size: 1.5vw;
+  color: #777;
+  text-decoration: line-through;
+}
+
+.dep-late td.dep-time .actual,
 .dep-late td.dep-time .delay {
   color: #ffd27f;
 }
 
+.dep-late-major td.dep-time .actual,
 .dep-late-major td.dep-time .delay {
   color: #f87171;
 }
