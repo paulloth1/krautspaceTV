@@ -166,7 +166,9 @@ html, body {
   margin-right: 0.5em;
 }
 
-/* Train departures */
+/* Train departures — a proper DB-style board: scheduled time + "+N" delay,
+   cancellations struck through in red, platform changes flagged yellow, and
+   HAFAS disruption text under the affected row. */
 .slide-train {
   align-items: stretch;
   justify-content: flex-start;
@@ -179,31 +181,148 @@ html, body {
 table.departures {
   width: 100%;
   border-collapse: collapse;
-  font-size: 3vw;
+  font-size: 2.5vw;
+  table-layout: fixed;
 }
 
-table.departures tr {
+table.departures thead th {
+  text-align: left;
+  font-size: 1.3vw;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  padding: 0 1vw 0.8vh;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.25);
+}
+
+table.departures tbody tr {
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-table.departures tr:last-child {
+table.departures tbody tr:last-child {
   border-bottom: none;
 }
 
 table.departures td {
-  padding: 1.5vh 1vw;
+  padding: 1.4vh 1vw;
+  vertical-align: top;
 }
 
-table.departures td.line {
+/* time column */
+th.dep-time, td.dep-time {
+  width: 16%;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+td.dep-time .sched {
   font-weight: 700;
+}
+
+.dep-cancelled td.dep-time .sched {
+  text-decoration: line-through;
+  color: #f87171;
+}
+
+td.dep-time .delay {
+  margin-left: 0.5vw;
+  font-weight: 700;
+}
+
+.dep-late td.dep-time .delay {
   color: #ffd27f;
+}
+
+.dep-late-major td.dep-time .delay {
+  color: #f87171;
+}
+
+/* line column */
+th.dep-line, td.dep-line {
   width: 15%;
 }
 
-table.departures td.time {
+.line-pill {
+  display: inline-block;
+  font-weight: 700;
+  padding: 0.2vh 0.9vw;
+  border-radius: 0.4vw;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.line-pill.line-bus {
+  background: #7c3aed;
+}
+
+.line-pill.line-tram {
+  background: #b91c1c;
+}
+
+.line-pill.line-rail {
+  background: #1d4ed8;
+}
+
+/* destination column */
+th.dep-dest, td.dep-dest {
+  width: auto;
+}
+
+td.dep-dest .dest {
+  display: block;
+}
+
+.dep-cancelled td.dep-dest .dest {
+  text-decoration: line-through;
+  color: #999;
+}
+
+td.dep-dest .via {
+  display: block;
+  font-size: 1.6vw;
+  color: #9aa0a6;
+  margin-top: 0.3vh;
+}
+
+td.dep-dest .cancel-flag {
+  display: inline-block;
+  margin-top: 0.4vh;
+  font-size: 1.7vw;
+  font-weight: 700;
+  color: #f87171;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+td.dep-dest .disruption {
+  display: block;
+  font-size: 1.6vw;
+  color: #ffd27f;
+  margin-top: 0.4vh;
+}
+
+td.dep-dest .disruption::before {
+  content: "\26A0\FE0F\00A0";
+}
+
+/* platform column */
+th.dep-platform, td.dep-platform {
+  width: 12%;
   text-align: right;
   font-variant-numeric: tabular-nums;
-  width: 20%;
+  white-space: nowrap;
+}
+
+td.dep-platform.changed {
+  color: #facc15;
+  font-weight: 700;
+}
+
+td.dep-platform s {
+  color: #777;
+  margin-right: 0.4vw;
 }
 
 /* RSS / Atom feed */
