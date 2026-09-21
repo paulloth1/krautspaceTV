@@ -1,0 +1,20 @@
+# Install: sudo cp deploy/bt-agent.service /etc/systemd/system/ && sudo systemctl enable --now bt-agent.service
+#
+# Auto-accepts Bluetooth pairing requests ("Just Works", no PIN/confirm)
+# so anyone can pair with the A2DP speaker without needing physical
+# access to the Pi to confirm each pairing - appropriate for a public
+# hackerspace speaker, not for a device holding anything sensitive over
+# Bluetooth.
+[Unit]
+Description=Bluetooth auto-accept pairing agent
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=bluetooth.target

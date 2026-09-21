@@ -1,0 +1,36 @@
+# Install: sudo cp deploy/rygel.service /etc/systemd/system/ && sudo systemctl enable --now rygel.service
+#
+# DLNA/UPnP media renderer, for casting from Android's/Windows' built-in
+# "Cast"/"Cast to Device" (no app install needed on the sender) - see the
+# DLNA section of README.md. Rygel needs a D-Bus *session* bus for its own
+# internal operation (distinct from the system bus, and from the DLNA/UPnP
+# network protocol itself, which is separate SSDP/HTTP and unaffected by
+# this); `dbus-run-session` gives it one without a real desktop login,
+# replacing the bespoke wrap-dbus script in Rygel's own packaged systemd
+# service example (upstream: /usr/share/doc/rygel/examples/service/).
+#
+# `/etc/rygel.conf` forces the Playbin renderer's video-sink to `fakesink`
+# and disables the MediaExport/Tracker(3) plugins (Rygel's other role -
+# serving files FROM this Pi's library - is not wanted here, and this box
+# has no media library to serve anyway). Forcing video to fakesink means
+# a client casting a video file still "plays" it (audio only, video
+# silently discarded) rather than Rygel's GStreamer playbin trying to
+# open a real video sink - which would hit the exact same Xorg/kmssink
+# DRM-master conflict spent all night fighting for AirPlay. Rygel is
+# audio-only by design here, deliberately, not because video casting was
+# tried and failed.
+[Unit]
+Description=Rygel DLNA/UPnP media renderer (audio-only)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/usr/bin/dbus-run-session /usr/bin/rygel
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

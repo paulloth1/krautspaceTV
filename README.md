@@ -352,6 +352,80 @@ twice. `uxplay`'s `kmssink` output works fine under the current
 `vc4-fkms-v3d` driver because GStreamer's KMS sink talks to the DRM/KMS
 API directly, independent of which vc4 driver variant is bound.
 
+### 6. Bluetooth speaker (optional)
+
+Lets any phone/laptop pair and play audio through the TV's speakers,
+without touching the kiosk display at all — Bluetooth audio never needs
+DRM master, unlike AirPlay/DLNA video, so there's no switching to do here:
+
+```sh
+sudo apt install bluez-alsa-utils bluez-tools
+sudo cp deploy/bluetooth-audio-setup.service deploy/bt-agent.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now bluetooth-audio-setup.service bt-agent.service
+```
+
+Also uncomment `DiscoverableTimeout = 0` and `PairableTimeout = 0` in
+`/etc/bluetooth/main.conf` (both default to commented-out, which leaves
+the adapter discoverable for only 180s) and restart `bluetooth.service`.
+
+`bluetooth-audio-setup.service` powers the adapter on and makes it
+permanently discoverable/pairable at boot. `bt-agent.service` auto-accepts
+pairing requests ("Just Works", no PIN) — appropriate for a public
+hackerspace speaker, not for a device holding anything sensitive over
+Bluetooth. The actual A2DP sink comes from `bluez-alsa-utils` itself
+(`bluealsa.service` + `bluealsa-aplay.service`, both auto-enabled by the
+package) — nothing custom needed there.
+
+### 7. Spotify Connect (optional)
+
+Lets Spotify's own app on any device play through the TV's speakers,
+via [raspotify](https://github.com/dtcooper/raspotify) (a packaged
+[librespot](https://github.com/librespot-org/librespot)):
+
+```sh
+curl -sSL https://dtcooper.github.io/raspotify/key.asc | sudo tee /usr/share/keyrings/raspotify_key.asc >/dev/null
+sudo chmod 644 /usr/share/keyrings/raspotify_key.asc
+echo 'deb [signed-by=/usr/share/keyrings/raspotify_key.asc] https://dtcooper.github.io/raspotify raspotify main' | sudo tee /etc/apt/sources.list.d/raspotify.list
+sudo apt update && sudo apt install -y raspotify
+```
+
+No local config needed — it installs itself as `raspotify.service`
+(enabled automatically) and shows up in Spotify's device picker as the
+Pi's hostname, "krautspaceTV". Audio-only, same as Bluetooth: no display
+interaction.
+
+### 8. DLNA/UPnP casting (optional)
+
+Lets Android's/Windows' built-in "Cast"/"Cast to Device" — no app install
+needed on the sender — play through the TV's speakers, via
+[Rygel](https://gitlab.gnome.org/GNOME/rygel):
+
+```sh
+sudo apt install rygel rygel-playbin
+sudo cp deploy/rygel.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now rygel.service
+```
+
+`rygel-playbin` is a separate package from base `rygel` (the renderer
+plugin isn't pulled in automatically) — without it Rygel starts, finds no
+plugins, and exits after 5 seconds. `deploy/rygel.service` runs it via
+`dbus-run-session`, since Rygel needs a D-Bus *session* bus for its own
+operation and this box has no desktop login to provide one (see the
+comments in that file for why, and why it isn't the old `wrap-dbus`
+script from Rygel's own packaged example).
+
+**Deliberately audio-only, by config, not by accident**: `/etc/rygel.conf`
+forces the `[Playbin]` renderer's `video-sink=fakesink` (so a cast video
+file still "plays" — audio only, video silently discarded) and disables
+the `MediaExport`/`Tracker`/`Tracker3` plugins (Rygel's other role,
+serving files *from* this Pi's library — not wanted here, and there's no
+library to serve anyway). Without forcing `fakesink`, Rygel's GStreamer
+playbin would try to open a real video sink on cast, hitting the exact
+same Xorg/kmssink DRM-master conflict the AirPlay section above spends a
+long comment explaining.
+
 ### Development
 
 With [devenv](https://devenv.sh) (`devenv shell`, or `direnv allow` if you use

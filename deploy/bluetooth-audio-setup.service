@@ -1,0 +1,22 @@
+# Install: sudo cp deploy/bluetooth-audio-setup.service /etc/systemd/system/ && sudo systemctl enable --now bluetooth-audio-setup.service
+#
+# Powers the Bluetooth adapter on and makes it permanently discoverable
+# and pairable, for the Bluetooth A2DP audio sink (bluez-alsa-utils -
+# see the "Bluetooth speaker" section of README.md). `/etc/bluetooth/
+# main.conf`'s DiscoverableTimeout/PairableTimeout=0 only stop discoverable
+# mode from switching itself back off once enabled - something still has
+# to actually turn it on, which is what this does at boot.
+[Unit]
+Description=Power on and make the Bluetooth adapter discoverable/pairable
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bluetoothctl power on
+ExecStart=/usr/bin/bluetoothctl discoverable on
+ExecStart=/usr/bin/bluetoothctl pairable on
+
+[Install]
+WantedBy=bluetooth.target
