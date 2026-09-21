@@ -311,6 +311,47 @@ To use your own logo instead, swap in a differently drawn
 `backend/templates/display.html` / styles in `backend/static/display.css`
 to match, since that overlay is real HTML/CSS, not the same image file.
 
+### 5. AirPlay mirroring receiver (optional)
+
+Lets Apple devices mirror their screen onto the TV:
+
+```sh
+sudo apt install uxplay
+sudo cp deploy/uxplay.service deploy/uxplay-switcher.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now uxplay.service uxplay-switcher.service
+```
+
+`uxplay.service` runs the AirPlay receiver continuously (so the Pi is
+always discoverable over mDNS as "KrautspaceTV") using hardware H.264
+*decode* (`-v4l2 -vd v4l2h264dec`), capped to 720p. It never touches the
+hardware *encoder* — see the comments in `deploy/uxplay.service` for why
+that's load-bearing on this specific device.
+
+**Before mirroring, free the display first:** `sudo systemctl stop
+kiosk.service` on the Pi, then connect from the Apple device. This is a
+manual step, not automatic — Xorg and UxPlay's direct-KMS video output
+can't both hold DRM master at the same time, and extensive live testing
+found that trying to win that handover as a reaction to the incoming
+connection is not reliable on this Pi 2's CPU (UxPlay can reach its video
+sink in well under half a second, faster than `systemctl stop` reliably
+frees the display). Stopping the kiosk yourself first sidesteps the race
+by giving it as much lead time as you want instead of a few hundred
+milliseconds.
+
+`uxplay-switcher.service` watches `uxplay.service`'s logs and resumes
+`kiosk.service` after a mirroring session ends, once
+`RESUME_GRACE_SECONDS` (default 10s) passes with no reconnect — so a
+brief drop-and-reconnect during viewing doesn't flicker the display back
+and forth. See `deploy/uxplay-switcher.sh` for the full history of what
+was tried before landing on this design.
+
+Full KMS (`vc4-kms-v3d`) is not an alternative to this setup: it causes a
+scanout bug (screen goes black) on this hardware's TV, tried and reverted
+twice. `uxplay`'s `kmssink` output works fine under the current
+`vc4-fkms-v3d` driver because GStreamer's KMS sink talks to the DRM/KMS
+API directly, independent of which vc4 driver variant is bound.
+
 ### Development
 
 With [devenv](https://devenv.sh) (`devenv shell`, or `direnv allow` if you use

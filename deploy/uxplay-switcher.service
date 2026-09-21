@@ -1,0 +1,26 @@
+# Install: sudo cp deploy/uxplay-switcher.service /etc/systemd/system/ && sudo systemctl enable --now uxplay-switcher.service
+#
+# Resumes kiosk.service after an AirPlay session ends - see
+# deploy/uxplay-switcher.sh for why it doesn't also stop the kiosk on
+# connect (that's manual - see the AirPlay section of README.md). Runs
+# as root (unlike uxplay.service) because it needs to control
+# kiosk.service.
+#
+# Deliberately only `After=`, no `Requires=`/`BindsTo=`: this script itself
+# restarts uxplay.service to recover a stuck pipeline (see the script), and
+# a Requires/BindsTo dependency would cascade-stop this unit too when it
+# does that, since systemd propagates an explicit stop of a required unit
+# to its dependents. `journalctl -u uxplay.service -f` keeps following
+# across uxplay.service restarts on its own regardless.
+[Unit]
+Description=Resume kiosk display after AirPlay sessions end
+After=uxplay.service
+
+[Service]
+Type=simple
+ExecStart=/home/admin/signage/deploy/uxplay-switcher.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,47 @@
+# Install: sudo cp deploy/uxplay.service /etc/systemd/system/ && sudo systemctl enable --now uxplay.service
+#
+# AirPlay mirroring/audio receiver. Runs continuously so the Pi is always
+# discoverable over mDNS; it only touches the physical display once a
+# client actually starts *video* mirroring - see uxplay-switcher.service,
+# which stops/resumes kiosk.service around that, since Xorg and UxPlay's
+# kmssink output can't both hold DRM master at the same time. Audio-only
+# AirTunes casting never needs the display at all and is left alone.
+#
+# `-v4l2 -vd v4l2h264dec -vc v4l2convert` selects hardware H.264 *decode*
+# via the Pi's bcm2835-codec V4L2 driver - confirmed working cleanly
+# end-to-end (idle listener, decode-only sanity checks, and a real device
+# mirroring session). The hardware *encoder* (v4l2h264enc) is not used
+# anywhere in this pipeline and must stay that way: an earlier test of it
+# wedged the shared bcm2835-codec M2M subsystem and hung the whole system,
+# requiring a watchdog reboot to recover. Do not add encoder-touching flags
+# here without a full clean-boot retest.
+#
+# `-s 1280x720@30` caps the requested mirror resolution to 720p rather than
+# the 1080p default, trading a little sharpness for meaningfully lower
+# decode CPU load on this Pi 2 (~19% vs ~29% of a core in testing).
+#
+# `-vsync no` disables UxPlay's audio/video NTP-timestamp sync logic: with
+# it on, a live test against a real iPhone hit a continuous "invalid
+# ntp_time < gst_video_pipeline_base_time" error loop that never produced
+# a frame and never tore the connection down either, leaving the GStreamer
+# pipeline (and the DRM device it had open) stuck indefinitely.
+#
+# `stdbuf -oL -eL` forces line-buffered output: uxplay's stdout is fully
+# block-buffered once it's not a TTY (i.e. once systemd captures it), so
+# without this the switcher's `journalctl -f` wouldn't see connect/
+# disconnect log lines until the buffer happened to fill.
+[Unit]
+Description=AirPlay mirroring/audio receiver (UxPlay)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+ExecStart=/usr/bin/stdbuf -oL -eL /usr/bin/uxplay -n KrautspaceTV -v4l2 -vd v4l2h264dec -vc v4l2convert -bt709 -vs kmssink -s 1280x720@30 -vsync no
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
