@@ -2,7 +2,7 @@
 #
 # Resumes kiosk.service after an AirPlay session ends - see
 # deploy/uxplay-switcher.sh for why it doesn't also stop the kiosk on
-# connect (that's manual - see the AirPlay section of README.md). Runs
+# connect (that's manual - see docs/casting.md). Runs
 # as root (unlike uxplay.service) because it needs to control
 # kiosk.service.
 #

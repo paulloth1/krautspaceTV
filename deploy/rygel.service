@@ -1,8 +1,8 @@
 # Install: sudo cp deploy/rygel.service /etc/systemd/system/ && sudo systemctl enable --now rygel.service
 #
 # DLNA/UPnP media renderer, for casting from Android's/Windows' built-in
-# "Cast"/"Cast to Device" (no app install needed on the sender) - see the
-# DLNA section of README.md. Rygel needs a D-Bus *session* bus for its own
+# "Cast"/"Cast to Device" (no app install needed on the sender) - see
+# docs/casting.md. Rygel needs a D-Bus *session* bus for its own
 # internal operation (distinct from the system bus, and from the DLNA/UPnP
 # network protocol itself, which is separate SSDP/HTTP and unaffected by
 # this); `dbus-run-session` gives it one without a real desktop login,

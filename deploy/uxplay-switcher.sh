@@ -17,7 +17,7 @@
 #
 # The reliable fix is to not race at all: stop kiosk.service manually
 # *before* connecting (`sudo systemctl stop kiosk.service` on the Pi -
-# see the AirPlay section of README.md), which gives the display as much
+# see docs/casting.md), which gives the display as much
 # lead time as you want instead of a few hundred milliseconds. This
 # script still auto-resumes the kiosk once the session ends, so you don't
 # have to remember to do that part.

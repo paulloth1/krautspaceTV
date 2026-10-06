@@ -2,7 +2,7 @@
 #
 # Powers the Bluetooth adapter on and makes it permanently discoverable
 # and pairable, for the Bluetooth A2DP audio sink (bluez-alsa-utils -
-# see the "Bluetooth speaker" section of README.md). `/etc/bluetooth/
+# see docs/casting.md). `/etc/bluetooth/
 # main.conf`'s DiscoverableTimeout/PairableTimeout=0 only stop discoverable
 # mode from switching itself back off once enabled - something still has
 # to actually turn it on, which is what this does at boot.

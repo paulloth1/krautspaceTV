@@ -2,7 +2,7 @@
 
 Digital signage for the Krautspace hackerspace: a FastAPI backend that rotates
 slides, plus a Chromium kiosk on a Raspberry Pi 2 that displays them. See
-`README.md` for the architecture, the slide types, and the Pi deployment.
+`README.md` for the basics and `docs/` for the architecture, the slide types, and the Pi deployment.
 
 ## Versioning
 
@@ -33,7 +33,7 @@ If you are not in the devenv shell, edit `pyproject.toml` by hand and then run
 stale lock.
 
 When a single change touches several categories, take the highest one. A commit
-that only reformats or only edits `README.md` needs no bump.
+that only reformats or only edits `README.md` or `docs/` needs no bump.
 
 ## Dependencies
 
