@@ -198,7 +198,9 @@ async def _canary_config() -> canary.CanaryConfig | None:
     except ValueError:
         port = 1883
     prefix = (await db.get_setting("canary_topic_prefix", "canary/glasses")).strip() or "canary/glasses"
-    return (host, port, f"{prefix}/event", f"{prefix}/state", f"{prefix}/status")
+    username = (await db.get_setting("canary_mqtt_username", "")).strip()
+    password = await db.get_setting("canary_mqtt_password", "")
+    return (host, port, f"{prefix}/event", f"{prefix}/state", f"{prefix}/status", username, password)
 
 
 @asynccontextmanager
@@ -562,6 +564,7 @@ async def admin(request: Request):
     canary_mqtt_host = await db.get_setting("canary_mqtt_host", "")
     canary_mqtt_port = await db.get_setting("canary_mqtt_port", "1883")
     canary_topic_prefix = await db.get_setting("canary_topic_prefix", "canary/glasses")
+    canary_mqtt_username = await db.get_setting("canary_mqtt_username", "")
     slide_names = {slide["id"]: slide["name"] for slide in slides}
     return templates.TemplateResponse(
         request,
@@ -575,6 +578,7 @@ async def admin(request: Request):
             "canary_mqtt_host": canary_mqtt_host,
             "canary_mqtt_port": canary_mqtt_port,
             "canary_topic_prefix": canary_topic_prefix,
+            "canary_mqtt_username": canary_mqtt_username,
             "slide_names_json": json.dumps(slide_names),
         },
     )
@@ -679,6 +683,8 @@ async def update_settings(
     canary_mqtt_host: str = Form(""),
     canary_mqtt_port: str = Form("1883"),
     canary_topic_prefix: str = Form("canary/glasses"),
+    canary_mqtt_username: str = Form(""),
+    canary_mqtt_password: str = Form(""),
 ):
     try:
         value = int(rotation_interval_seconds)
@@ -695,4 +701,7 @@ async def update_settings(
         canary_port = 1883
     await db.set_setting("canary_mqtt_port", str(canary_port))
     await db.set_setting("canary_topic_prefix", canary_topic_prefix.strip() or "canary/glasses")
+    await db.set_setting("canary_mqtt_username", canary_mqtt_username.strip())
+    if canary_mqtt_password:
+        await db.set_setting("canary_mqtt_password", canary_mqtt_password)
     return RedirectResponse("/", status_code=303)

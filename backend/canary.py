@@ -76,7 +76,7 @@ class CanaryState:
 
 STATE = CanaryState()
 
-CanaryConfig = tuple[str, int, str, str, str]  # host, port, event_topic, state_topic, status_topic
+CanaryConfig = tuple[str, int, str, str, str, str, str]  # host, port, event_topic, state_topic, status_topic, username, password
 
 
 def _decode(payload) -> str:
@@ -104,11 +104,20 @@ async def _listen_once(
     status_topic: str,
     get_config: Callable[[], Coroutine[None, None, CanaryConfig | None]],
     config: CanaryConfig,
+    *,
+    username: str | None = None,
+    password: str | None = None,
 ) -> None:
     # A fixed, identifiable client id (rather than aiomqtt's default random
     # "auto-..." one, indistinguishable in the broker's log from any other
     # anonymous client, including a plain mosquitto_pub/sub CLI invocation).
-    async with aiomqtt.Client(hostname=host, port=port, identifier="krautspacetv-canary") as client:
+    async with aiomqtt.Client(
+        hostname=host,
+        port=port,
+        identifier="krautspacetv-canary",
+        username=username or None,
+        password=password or None,
+    ) as client:
         await client.subscribe(event_topic)
         await client.subscribe(state_topic)
         await client.subscribe(status_topic)
@@ -146,9 +155,12 @@ async def canary_listener_loop(get_config: Callable[[], Coroutine[None, None, Ca
             await asyncio.sleep(RECONNECT_DELAY)
             continue
         await STATE.set_configured(True)
-        host, port, event_topic, state_topic, status_topic = config
+        host, port, event_topic, state_topic, status_topic, username, password = config
         try:
-            await _listen_once(host, port, event_topic, state_topic, status_topic, get_config, config)
+            await _listen_once(
+                host, port, event_topic, state_topic, status_topic, get_config, config,
+                username=username, password=password,
+            )
         except Exception:
             logger.exception("canary_listener_loop: connection lost, retrying")
             # Can't reach the broker either way, so from the display's

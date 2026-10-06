@@ -59,5 +59,5 @@ async def test_canary_config_present_when_enabled_and_configured(db_module, monk
     await db_module.set_setting("canary_topic_prefix", "my/canary")
     # canary_enabled deliberately left unset - defaults to "yes"
     assert await _canary_config() == (
-        "127.0.0.1", 1884, "my/canary/event", "my/canary/state", "my/canary/status"
+        "127.0.0.1", 1884, "my/canary/event", "my/canary/state", "my/canary/status", "", ""
     )

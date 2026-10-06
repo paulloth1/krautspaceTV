@@ -1,7 +1,9 @@
 # Install: sudo cp deploy/c3lounge.service /etc/systemd/system/ && sudo systemctl enable --now c3lounge.service
 #
 # Listens for ON/OFF on MQTT (krautspace/c3lounge/set) and plays the C3 Lounge
-# radio on HDMI audio. See deploy/c3lounge.sh.
+# radio on HDMI audio. See deploy/c3lounge.sh. The MQTT broker login is read
+# from /etc/krautspace-mqtt.env (root-only, not in git):
+#   MQTT_HOST=homeassistant.local  MQTT_PORT=1883  MQTT_USER=...  MQTT_PASSWORD=...
 [Unit]
 Description=C3 Lounge radio on HDMI audio, controlled over MQTT
 After=mosquitto.service sound.target network-online.target
@@ -10,6 +12,7 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=admin
+EnvironmentFile=/etc/krautspace-mqtt.env
 ExecStart=/home/admin/signage/deploy/c3lounge.sh
 Restart=on-failure
 RestartSec=5

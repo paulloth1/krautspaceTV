@@ -181,7 +181,7 @@ async def test_canary_listener_loop_marks_offline_on_connection_error(monkeypatc
     monkeypatch.setattr("backend.canary._listen_once", _boom)
 
     async def _config():
-        return ("broker", 1883, "e", "s", "st")
+        return ("broker", 1883, "e", "s", "st", "", "")
 
     task = asyncio.create_task(canary_listener_loop(_config))
     await asyncio.sleep(0.05)

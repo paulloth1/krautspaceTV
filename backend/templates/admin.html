@@ -184,6 +184,14 @@
                 >
                 <span class="field-hint">Expects "&lt;prefix&gt;/event", "&lt;prefix&gt;/state" and "&lt;prefix&gt;/status" underneath it.</span>
               </div>
+              <div class="form-row">
+                <label for="canary_mqtt_username">MQTT username (optional)</label>
+                <input type="text" id="canary_mqtt_username" name="canary_mqtt_username" value="{{ canary_mqtt_username }}">
+              </div>
+              <div class="form-row">
+                <label for="canary_mqtt_password">MQTT password (optional)</label>
+                <input type="password" id="canary_mqtt_password" name="canary_mqtt_password" placeholder="leave blank to keep the current one">
+              </div>
             </div>
 
             <div class="settings-actions">
