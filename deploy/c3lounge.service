@@ -1,0 +1,18 @@
+# Install: sudo cp deploy/c3lounge.service /etc/systemd/system/ && sudo systemctl enable --now c3lounge.service
+#
+# Listens for ON/OFF on MQTT (krautspace/c3lounge/set) and plays the C3 Lounge
+# radio on HDMI audio. See deploy/c3lounge.sh.
+[Unit]
+Description=C3 Lounge radio on HDMI audio, controlled over MQTT
+After=mosquitto.service sound.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=admin
+ExecStart=/home/admin/signage/deploy/c3lounge.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
